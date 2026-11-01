@@ -1,0 +1,363 @@
+"""공도복 매물 판단표 생성기 (모아타운 템플릿 v2.1 구조 유지, 공도복 치환)
+
+사용:  python3 analysis/build_xlsx.py  →  analysis/bulgwang_park_판단표.xlsx
+매물·시나리오는 아래 PROPERTIES / SCENARIOS 를 고쳐서 재생성. 단위: 억원.
+검증:  soffice --headless --convert-to xlsx 로 재계산 후 오류 셀 0 확인 (verify() 참고)
+"""
+from openpyxl import Workbook
+from openpyxl.comments import Comment
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter as L
+from openpyxl.workbook.defined_name import DefinedName
+
+OUT = "analysis/bulgwang_park_판단표.xlsx"
+
+BLUE = Font(color="0000FF")
+GREEN = Font(color="008000")
+GREY = Font(color="666666")
+BOLD = Font(bold=True)
+YELLOW = PatternFill("solid", fgColor="FFFF00")
+RED = PatternFill("solid", fgColor="FCE4E4")
+HEAD = PatternFill("solid", fgColor="DDEBF7")
+
+# ---------------------------------------------------------------- 입력
+COMMON = [  # (name, label, value, note, yellow)
+    ("완공시세_59", "완공 시세 (59타입, 억)", 13.5, "사용자 가정, 5년 뒤", True),
+    ("완공시세_74", "완공 시세 (74타입, 억)", 14.5, "사용자 가정, 5년 뒤", True),
+    ("완공시세_84", "완공 시세 (84타입, 억)", 0, "검토 제외 (0)", False),
+    ("전세대출상한", "전세대출 상한 (1주택자 규제지역, 억)", 2.0, "", False),
+    ("전세금리", "전세대출 연이자율", 0.045, "", False),
+    ("월세연액", "월세 연액 (120만×12)", 0.144, "", False),
+    ("월세보증금", "월세 보증금", 0.3, "", False),
+    ("마통금리", "마이너스통장 금리", 0.06, "", False),
+    ("생활자금", "생활안정자금 주담대 한도 (억)", 1.0, "v0.1 시나리오에서는 미사용", False),
+    ("생활자금금리", "생활안정자금 금리", 0.05, "", False),
+    ("원리금계수", "잔금대출 연 원리금 계수 (30년, 5%)", 0.0644, "", False),
+    ("가용저축", "가용 저축 (주거비·대출비 차감 전, 억/년)", 0.3536, "", False),
+    ("보유현금", "보유 현금 (억)", 2.75, "", False),
+    ("인테리어", "인테리어·가구 (구축 실거주 시, 억)", 0.2, "신축 입주는 0", False),
+    ("LTV", "잔금대출 LTV (규제지역 1주택)", 0.4, "", False),
+    ("DSR", "DSR 한도", 0.4, "", False),
+    ("대출상한_15이하", "주담대 상한: 시세 15억 이하 (억)", 6, "10·15 대책 구간", False),
+    ("대출상한_25이하", "주담대 상한: 15~25억 (억)", 4, "", False),
+    ("대출상한_25초과", "주담대 상한: 25억 초과 (억)", 2, "", False),
+    ("매수연도", "매수 연도", 2026, "", False),
+    ("이주연도", "이주(보상·명도) 연도", 2028, "가정 — 사업 단계 미확인", True),
+    ("완공연도", "완공·입주 연도", 2031, "사용자 '5년 뒤' 가정. ±2년 민감도", True),
+    ("전매제한", "전매제한 기간 (년)", 3, "미확인 — 가정", True),
+    ("실거주의무", "실거주 의무 (년)", 3, "미확인 — 가정", True),
+    ("분양가계수", "우선공급가 조정계수 (민감도 0.9/1.0/1.1)", 1.0, "공사비 민감도 대체", True),
+    ("공시가배수", "현물보상액 ÷ 공동주택가격 (1.4/1.6/1.8)", 1.6, "증산4 빌라 사례 1건 (공시 2.06→보상 3.3)", True),
+    ("지분평당가", "현물보상 대지지분 평당가 (억/평, 교차검증용)", 0.417, "증산4 빌라 사례 3.3억÷7.9평", True),
+    ("기준일", "권리산정(현물보상) 기준일", "2021-06-29", "캡처 13. 2021.6.29 이전 발표 사업지는 개정법 후에도 유지", False),
+]
+
+# 공급 구조 표: 구역 | 면적 | 소유자 | 총공급 | 우선공급 | 일반 | 공공자가 | 공공임대 | 기준가59 | 74 | 84 | 비고
+SUPPLY = [
+    ("불광근린공원", 88042, 1455, 2150, 1170, 507, 215, 258, 9.55, 10.19, 11.30,
+     "세대수: 캡처 13·16(초기자료 참고만). 우선공급가: 증산4 준용(가정). 1종 32%/2종 68%"),
+    ("증산4(참고)", 166531, 655, 3568, None, None, None, 430, 9.55, 10.19, 11.30,
+     "블로그 2026.09. 84 11.3억은 주민협의체 협의 중"),
+]
+
+# 매물 파라미터 (현금흐름 시트 열): 이름 → dict
+PROPERTIES = {
+    "평균다세대(가정) 5.0억": dict(
+        매매가=5.0, 부대비=0.08, 승계보증금=1.5, 새전세=0, 이주지원한도=0,
+        교체연도=0, 공실유지비=0, 월세수입전=0, 월세수입후=0,
+        전용=11.0, 대지지분=8.9, 공시가=2.3, 취득일="미확인",
+        메모="대지지분 8.9평 = 구역 공동주택 토지 36,640㎡ ÷ 1,243세대. 공시가는 지분×4,170만과 맞춘 가정값. 세입자 보증금 1.5 승계 가정(HUG 상한 2.3×126%=2.9)",
+    ),
+}
+
+# 판단표 행: (매물, 거주방식 코드 'J'전세/'W'월세/'C'현금청산, 타입, 라벨, 리스크 메모)
+SCENARIOS = [
+    ("평균다세대(가정) 5.0억", "J", 59, "C1 갭 승계 → 전세 거주 → 입주", ""),
+    ("평균다세대(가정) 5.0억", "W", 59, "C2 갭 승계 → 월세 0.3/120만 거주 → 입주", ""),
+    ("평균다세대(가정) 5.0억", "J", 74, "C3 갭 승계 → 전세 거주 → 입주 (74)", ""),
+    ("평균다세대(가정) 5.0억", "C", 59, "X 현금청산 (기준일 이후 취득·예외 불충족 시)",
+     "⚠ 현물보상액만 수령. 매매가+부대비 대비 손실"),
+]
+RISK_COMMON = ("⚠ 기준일 2021.6.29 이후 취득 매물. 2025.8 개정 예외(최초거래·무주택 매수자·1회 승계) 충족 여부 미확인 → "
+               "충족 시 우선공급, 미충족 시 현금청산(X행). 전매제한·실거주 의무 미확인(가정 3년)")
+
+# ---------------------------------------------------------------- 유틸
+def name(wb, nm, ref):
+    wb.defined_names[nm] = DefinedName(nm, attr_text=ref)
+
+
+def put(ws, r, c, v, font=None, fill=None, comment=None, fmt=None):
+    cell = ws.cell(row=r, column=c, value=v)
+    if font: cell.font = font
+    if fill: cell.fill = fill
+    if comment: cell.comment = Comment(comment, "builder")
+    if fmt: cell.number_format = fmt
+    return cell
+
+
+# ---------------------------------------------------------------- 가정
+def build_assumptions(wb):
+    ws = wb.create_sheet("가정")
+    put(ws, 1, 1, "공통 가정 (파란색 = 직접 수정 가능) — 3080 도심공공주택복합사업 불광근린공원", BOLD)
+    r = 3
+    for nm, label, val, note, yellow in COMMON:
+        put(ws, r, 1, label)
+        put(ws, r, 2, val, BLUE, YELLOW if yellow else None)
+        put(ws, r, 3, note, GREY)
+        name(wb, nm, f"가정!$B${r}")
+        r += 1
+    r += 1
+    put(ws, r, 1, "사업지 개요·확인 사항", BOLD); r += 1
+    for t in [
+        "• 불광근린공원: 구역 88,042㎡, 토지등소유자 1,455(추정), 공급 2,150, 평균대지지분 18.3평, 현물보상 기준일 2021.06.29 (캡처 13~16)",
+        "• 기존 1,471세대 = 공동주택 1,243(85%) + 단독 228(15%). 반지하 59%, 과소필지 22%, 1종주거 32%",
+        "• 공급 세부(우선 1,170 / 일반 507 / 공공자가 215 / 임대 258)는 초기 자료 — 참고만, 최신안으로 교체 필요",
+        "• 총공급 ÷ 소유자 = 1.48 (증산4 5.45, 증산5 1.75) → 우선공급가를 낮출 구조적 여력이 작음. 증산4 가격을 하한 쪽으로 간주",
+        "• 사업 단계(지구지정/사업계획승인) 미확인 → 이주 2028·완공 2031은 가정",
+    ]:
+        put(ws, r, 1, t); r += 1
+    r += 1
+    put(ws, r, 1, "시나리오 전제", BOLD); r += 1
+    for t in [
+        "• 권리가액 열 = 현물보상액 = 공동주택가격 × 배수 (비례율 없음). 대지지분 × 평당가는 교차검증 열",
+        "• 조합원분양가 열 = 우선공급가 = 공급구조표 기준가(타입별) × 조정계수. 증산4 준용",
+        "• 분담금 = 우선공급가 − 현물보상액, 완공 시 전액 납부 가정 (실제는 계약금·중도금·잔금 분납 — 미확인)",
+        "• 이주비 상환 열 = 공공 이주 지원 사용액. 한도 미확인 → 0. 세입자 보증금 반환은 저축 + 마통",
+        "• 안전마진 = 완공 시세 − (매매가 + 부대비 + 인테리어 + 분담금). 필요 대출 = 분담금 + 이주 지원 상환 − 입주 시 보유현금",
+        "• LTV 한도 = MIN(완공시세 × 40%, 구간 상한 6/4/2억). DSR 필요 연소득 = 필요 대출 × 0.0644 ÷ 0.4",
+        "• 현금청산(X) 행: 완공 시세 자리에 현물보상액, 분담금 0 → 안전마진 = 현물보상액 − 매매가 − 부대비",
+        "• 처분 가능 시점 = 완공연도 + 전매제한. 실거주 의무 기간엔 전세 수입 없음(현금흐름은 입주에서 종료)",
+    ]:
+        put(ws, r, 1, t); r += 1
+    r += 1
+    put(ws, r, 1, "색 범례: 파란 글씨 = 입력값 / 검정 = 수식 / 초록 = 다른 시트 참조(덮어쓰기 가능) / 노란 칸 = 자주 바꾸는 입력 / 붉은 칸 = 리스크", GREY)
+    r += 2
+
+    # 공급 구조 표
+    put(ws, r, 1, "공급 구조 표 (사업성 블록 대체) — 파란 글씨 = 입력값", BOLD); r += 1
+    heads = ["구역", "면적(㎡)", "토지등소유자", "총공급", "우선공급", "일반분양", "공공자가", "공공임대",
+             "총÷소유자", "일반÷소유자", "기준가 59", "기준가 74", "기준가 84", 59, 74, 84, "비고"]
+    hr = r
+    for i, h in enumerate(heads, 1):
+        put(ws, r, i, h, fill=HEAD)
+    ws.cell(row=r, column=14).comment = Comment("조정 우선공급가(타입별) = 기준가 × 분양가계수. 판단표가 이 3열을 타입으로 INDEX/MATCH", "builder")
+    r += 1
+    first = r
+    for row in SUPPLY:
+        zone, area, owners, total, pri, gen, pub, rent, p59, p74, p84, note = row
+        put(ws, r, 1, zone)
+        for i, v in enumerate([area, owners, total, pri, gen, pub, rent], 2):
+            put(ws, r, i, v, BLUE)
+        put(ws, r, 9, f"=D{r}/C{r}", fmt="0.00")
+        put(ws, r, 10, f'=IF(F{r}="","",F{r}/C{r})', fmt="0.00")
+        for i, v in enumerate([p59, p74, p84], 11):
+            put(ws, r, i, v, BLUE)
+        put(ws, r, 14, f"=ROUND(K{r}*분양가계수,2)", fill=YELLOW)
+        put(ws, r, 15, f"=ROUND(L{r}*분양가계수,2)", fill=YELLOW)
+        put(ws, r, 16, f"=ROUND(M{r}*분양가계수,2)", fill=YELLOW)
+        put(ws, r, 17, note, GREY)
+        r += 1
+    last = r - 1
+    name(wb, "공급_구역", f"가정!$A${first}:$A${last}")
+    name(wb, "공급_타입", f"가정!$N${hr}:$P${hr}")
+    name(wb, "공급_조정가", f"가정!$N${first}:$P${last}")
+    r += 1
+    put(ws, r, 1, "민감도 축: 분양가계수 0.9/1.0/1.1 · 공시가배수 1.4/1.6/1.8 · 완공연도 ±2 · 완공시세 ±1억 — 위 노란 칸을 바꾸면 판단표·현금흐름이 자동 재계산", GREY)
+    ws.column_dimensions["A"].width = 48
+    ws.column_dimensions["C"].width = 60
+    return ws
+
+
+# ---------------------------------------------------------------- 현금흐름
+YEARS = 13  # 매수연도 + 0..12
+
+
+def build_cashflow(wb):
+    ws = wb.create_sheet("현금흐름")
+    put(ws, 1, 1, "매물·거주방식별 연도별 현금흐름 — 세입자 보증금·전세대출 이자·마통 이자 반영 (공도복: 이주 지원 미확인 0)", BOLD)
+    put(ws, 2, 1, "순현금이 음수면 마이너스통장 잔액(다음 해 이자). 파란 글씨 = 입력값. 연도는 '가정' 매수/이주/완공연도에 연동", GREY)
+    put(ws, 3, 1, "매물별 파라미터", BOLD)
+    params = ["매매가", "부대비", "승계보증금", "새전세", "이주지원한도", "교체연도", "공실유지비", "월세수입전", "월세수입후"]
+    labels = {"매매가": "매매가", "부대비": "부대비", "승계보증금": "현 세입자 보증금 (승계)", "새전세": "새 세입자 전세 (교체 시)",
+              "이주지원한도": "공공 이주 지원 한도 (미확인 → 0)", "교체연도": "세입자 교체 연도 (0 = 없음)",
+              "공실유지비": "공실 유지비 (연)", "월세수입전": "세입자 월세 수입 (연, 교체 전)", "월세수입후": "세입자 월세 수입 (연, 교체 후)"}
+    pcol = {}
+    for j, (pname, p) in enumerate(PROPERTIES.items(), 2):
+        put(ws, 3, j, pname, fill=HEAD)
+        pcol[pname] = j
+        for i, k in enumerate(params, 4):
+            put(ws, i, j, p[k], BLUE)
+    for i, k in enumerate(params, 4):
+        put(ws, i, 1, labels[k])
+    prow = {k: 4 + i for i, k in enumerate(params)}
+
+    r = 4 + len(params) + 1
+    put(ws, r, 1, "공통 파라미터 → '가정' 시트 이름 참조", GREY)
+    r += 2
+    outputs = {}
+    for idx, (pname, mode, typ, label, _) in enumerate(SCENARIOS):
+        if mode == "C":
+            continue
+        c = L(pcol[pname])
+        P = lambda k: f"${c}${prow[k]}"
+        put(ws, r, 1, f"{pname} · {label}", BOLD); r += 1
+        for i, h in enumerate(["연도", "이벤트", "가용 저축", "주거비(−월세수입)", "생활자금 원리금", "마통 이자", "이벤트 현금(±)", "기말 순현금", "생활자금 잔액", "이주 지원 사용"], 1):
+            put(ws, r, i, h, fill=HEAD)
+        r += 1
+        y0 = r
+        leftover = f"(보유현금-({P('매매가')}+{P('부대비')}-{P('승계보증금')}))"
+        deposit_at_move = f"IF(AND({P('교체연도')}>0,{P('교체연도')}<이주연도),{P('새전세')},{P('승계보증금')})"
+        rent_income = f"IF(A{{r}}>이주연도,0,IF(OR({P('교체연도')}=0,A{{r}}<{P('교체연도')}),{P('월세수입전')},{P('월세수입후')}))"
+        housing = "전세대출상한*전세금리" if mode == "J" else "월세연액"
+        for k in range(YEARS):
+            put(ws, r, 1, f"=매수연도+{k}")
+            ev = (f'=IF(A{r}=매수연도,"매수: 갭 승계, 남는 현금→' + ("전세보증금(부족분 마통)" if mode == "J" else "월세보증금 0.3 지출") + '",'
+                  f'IF(A{r}=이주연도,"이주: 세입자 보증금 반환(지원 한도 초과분 현금·마통)",'
+                  f'IF(A{r}=완공연도,"입주: ' + ("전세 현금분 회수" if mode == "J" else "월세보증금 회수") + '",'
+                  f'IF(AND({P("교체연도")}>0,A{r}={P("교체연도")}),"세입자 교체",""))))')
+            put(ws, r, 2, ev, GREY)
+            put(ws, r, 3, f"=IF(A{r}=매수연도,0,가용저축)")
+            put(ws, r, 4, f"=IF(OR(A{r}=매수연도,A{r}>완공연도),0,{housing}+{P('공실유지비')}-{rent_income.format(r=r)})")
+            put(ws, r, 5, 0)
+            put(ws, r, 6, 0 if k == 0 else f"=MAX(0,-H{r-1})*마통금리")
+            buy = f"MIN(0,{leftover})" if mode == "J" else f"{leftover}-월세보증금"
+            back = f"MAX(0,{leftover})" if mode == "J" else "월세보증금"
+            g = (f"=IF(A{r}=매수연도,{buy},0)"
+                 f"+IF(AND({P('교체연도')}>0,A{r}={P('교체연도')}),{P('새전세')}-{P('승계보증금')},0)"
+                 f"+IF(A{r}=이주연도,-{deposit_at_move}+MIN({P('이주지원한도')},{deposit_at_move}),0)"
+                 f"+IF(A{r}=완공연도,{back},0)")
+            put(ws, r, 7, g)
+            put(ws, r, 8, f"=G{r}" if k == 0 else f"=H{r-1}+C{r}-D{r}-E{r}-F{r}+G{r}")
+            put(ws, r, 9, 0)
+            put(ws, r, 10, (f"=IF(A{r}=이주연도,MIN({P('이주지원한도')},{deposit_at_move}),0)" if k == 0
+                            else f"=J{r-1}+IF(A{r}=이주연도,MIN({P('이주지원한도')},{deposit_at_move}),0)"))
+            r += 1
+        y1 = r - 1
+        put(ws, r, 7, "입주 시 보유현금 →")
+        put(ws, r, 8, f"=INDEX(H{y0}:H{y1},MATCH(완공연도,A{y0}:A{y1},0))", fill=YELLOW)
+        put(ws, r, 9, "이주 지원 상환 →")
+        put(ws, r, 10, f"=INDEX(J{y0}:J{y1},MATCH(완공연도,A{y0}:A{y1},0))", fill=YELLOW)
+        outputs[idx] = (f"현금흐름!$H${r}", f"현금흐름!$J${r}")
+        r += 3
+    ws.column_dimensions["A"].width = 34
+    ws.column_dimensions["B"].width = 50
+    for col in "CDEFGHIJ":
+        ws.column_dimensions[col].width = 14
+    return outputs
+
+
+# ---------------------------------------------------------------- 보유현금 산출
+def build_cash(wb, outputs):
+    ws = wb.create_sheet("보유현금 산출")
+    heads = ["구분", "매수 후 남는 현금", "저축1 연액", "년수1", "저축2 연액", "년수2", "저축3 연액", "년수3", "기타 유입(+)", "유출(−)", "입주 시 예상 보유현금", "메모"]
+    for i, h in enumerate(heads, 1):
+        put(ws, 1, i, h, fill=HEAD)
+    refs = {}
+    r = 2
+    for idx, (pname, mode, typ, label, _) in enumerate(SCENARIOS):
+        put(ws, r, 1, f"{pname} · {label}")
+        if mode == "C":
+            for i in range(2, 11): put(ws, r, i, "—", GREY)
+            put(ws, r, 11, 0, GREY)
+            put(ws, r, 12, "현금청산: 입주 없음", GREY)
+        else:
+            for i in range(2, 11): put(ws, r, i, "—", GREY)
+            put(ws, r, 11, "=" + outputs[idx][0], GREEN)
+            put(ws, r, 12, "→ '현금흐름' 시트 연도별 계산값 참조")
+        refs[idx] = f"'보유현금 산출'!$K${r}"
+        r += 1
+    ws.column_dimensions["A"].width = 55
+    return refs
+
+
+# ---------------------------------------------------------------- 판단표
+HEADERS = ["순위", "사업지", "상세구역", "매물", "거주 방식", "타입", "매매가", "전용(평)", "대지지분(평)", "부대비", "인테리어", "공시가",
+           "권리가액", "현물보상(지분법)", "조합원분양가(59)", "분담금(예상)", "완공 시세(59)", "예상 보유현금", "분담금 − 보유현금",
+           "이주비 상환", "필요 대출", "총지출", "안전마진", "LTV 한도", "LTV 여유", "DSR 필요 연소득(억)",
+           "대지지분 평당가", "공시가 배수", "취득일/기준일", "예외 요건(최초거래·무주택·1회승계)", "처분 가능 시점", "리스크·비고"]
+NOTES = {
+    "타입": "59/74/84. 우선공급가·완공 시세를 이 값으로 선택 (원본 템플릿은 59 고정)",
+    "권리가액": "공도복: 현물보상액 = 공동주택가격 × 공시가배수 (비례율 없음). 사업계획승인 후 감정평가로 확정",
+    "현물보상(지분법)": "교차검증: 대지지분 × 지분평당가 (증산4 사례 4,170만/평)",
+    "조합원분양가(59)": "공도복: 우선공급가(타입별). 공급구조표 기준가 × 분양가계수. 분양가상한제 적용 공공분양",
+    "완공 시세(59)": "타입별 완공 시세 ('가정'). 현금청산 행은 현물보상액으로 덮어씀",
+    "이주비 상환": "공도복: 공공 이주 지원 사용액. 한도 미확인 → 0",
+    "취득일/기준일": "현 소유자 취득일(등기부 갑구) vs 2021.06.29. 기준일 이후 취득이면 붉은 칸",
+    "예외 요건(최초거래·무주택·1회승계)": "2025.8.1 시행 개정법 예외. 미확인이면 우선공급 행 + 현금청산 행 병기",
+    "처분 가능 시점": "완공연도 + 전매제한 (미확인, 가정)",
+}
+
+
+def build_table(wb, cash_refs, outputs):
+    ws = wb.create_sheet("판단표", 0)
+    put(ws, 1, 1, "공도복 매물 시나리오 판단표 v0.1 (단위: 억원) — 불광근린공원 / 증산4 준용 가정 / 2026.11", BOLD)
+    col = {h: i for i, h in enumerate(HEADERS, 1)}
+    C = lambda h, r: f"{L(col[h])}{r}"
+    for h, i in col.items():
+        put(ws, 3, i, h, fill=HEAD, comment=NOTES.get(h))
+    r = 4
+    for idx, (pname, mode, typ, label, risk) in enumerate(SCENARIOS):
+        p = PROPERTIES[pname]
+        cash = mode == "C"
+        put(ws, r, col["순위"], f"=RANK({C('안전마진', r)},${L(col['안전마진'])}$4:${L(col['안전마진'])}$199,0)")
+        put(ws, r, col["사업지"], "불광근린공원")
+        put(ws, r, col["상세구역"], "불광근린공원")
+        put(ws, r, col["매물"], pname, fill=RED)
+        put(ws, r, col["거주 방식"], label)
+        put(ws, r, col["타입"], typ, BLUE, YELLOW)
+        put(ws, r, col["매매가"], p["매매가"], BLUE)
+        put(ws, r, col["전용(평)"], p["전용"], BLUE)
+        put(ws, r, col["대지지분(평)"], p["대지지분"], BLUE)
+        put(ws, r, col["부대비"], p["부대비"], BLUE)
+        put(ws, r, col["인테리어"], 0, BLUE)
+        put(ws, r, col["공시가"], p["공시가"], BLUE)
+        put(ws, r, col["권리가액"], f"=ROUND({C('공시가', r)}*공시가배수,2)", GREEN, YELLOW)
+        put(ws, r, col["현물보상(지분법)"], f"=ROUND({C('대지지분(평)', r)}*지분평당가,2)", GREEN)
+        put(ws, r, col["조합원분양가(59)"],
+            0 if cash else f"=INDEX(공급_조정가,MATCH({C('상세구역', r)},공급_구역,0),MATCH({C('타입', r)},공급_타입,0))",
+            GREEN, YELLOW)
+        put(ws, r, col["분담금(예상)"], 0 if cash else f"={C('조합원분양가(59)', r)}-{C('권리가액', r)}")
+        put(ws, r, col["완공 시세(59)"],
+            f"={C('권리가액', r)}" if cash else f"=CHOOSE(MATCH({C('타입', r)},공급_타입,0),완공시세_59,완공시세_74,완공시세_84)",
+            GREEN, YELLOW)
+        put(ws, r, col["예상 보유현금"], f"={cash_refs[idx]}", GREEN, YELLOW)
+        put(ws, r, col["분담금 − 보유현금"], f"={C('분담금(예상)', r)}-{C('예상 보유현금', r)}")
+        put(ws, r, col["이주비 상환"], 0 if cash else f"={outputs[idx][1]}", GREEN)
+        put(ws, r, col["필요 대출"], 0 if cash else f"={C('분담금(예상)', r)}+{C('이주비 상환', r)}-{C('예상 보유현금', r)}")
+        put(ws, r, col["총지출"], f"={C('매매가', r)}+{C('부대비', r)}+{C('인테리어', r)}+{C('분담금(예상)', r)}")
+        put(ws, r, col["안전마진"], f"={C('완공 시세(59)', r)}-{C('총지출', r)}")
+        n = C('완공 시세(59)', r)
+        put(ws, r, col["LTV 한도"], 0 if cash else f"=MIN({n}*LTV,IF({n}>25,대출상한_25초과,IF({n}>15,대출상한_25이하,대출상한_15이하)))")
+        put(ws, r, col["LTV 여유"], 0 if cash else f"={C('LTV 한도', r)}-{C('필요 대출', r)}")
+        put(ws, r, col["DSR 필요 연소득(억)"], 0 if cash else f"={C('필요 대출', r)}*원리금계수/DSR")
+        put(ws, r, col["대지지분 평당가"], f"=ROUND({C('매매가', r)}/{C('대지지분(평)', r)},3)")
+        put(ws, r, col["공시가 배수"], f"=ROUND({C('매매가', r)}/{C('공시가', r)},2)")
+        put(ws, r, col["취득일/기준일"], f"{p['취득일']} / 2021.06.29", fill=RED)
+        put(ws, r, col["예외 요건(최초거래·무주택·1회승계)"], "미확인 (매수자 무주택 ○ / 최초거래 ? / 승계횟수 ?)", fill=RED)
+        put(ws, r, col["처분 가능 시점"], "—" if cash else "=완공연도+전매제한")
+        put(ws, r, col["리스크·비고"], (risk + " " if risk else "") + RISK_COMMON + " | " + p["메모"], fill=RED)
+        for h in ("매매가", "부대비", "공시가", "권리가액", "현물보상(지분법)", "조합원분양가(59)", "분담금(예상)", "완공 시세(59)",
+                  "예상 보유현금", "분담금 − 보유현금", "이주비 상환", "필요 대출", "총지출", "안전마진", "LTV 한도", "LTV 여유", "DSR 필요 연소득(억)"):
+            ws.cell(row=r, column=col[h]).number_format = "0.00"
+        r += 1
+    ws.freeze_panes = "F4"
+    ws.column_dimensions["D"].width = 24
+    ws.column_dimensions["E"].width = 38
+    ws.column_dimensions[L(col["리스크·비고"])].width = 90
+    ws.column_dimensions[L(col["예외 요건(최초거래·무주택·1회승계)"])].width = 40
+    return ws
+
+
+def main():
+    wb = Workbook()
+    wb.remove(wb.active)
+    build_assumptions(wb)
+    outputs = build_cashflow(wb)
+    cash_refs = build_cash(wb, outputs)
+    build_table(wb, cash_refs, outputs)
+    wb.save(OUT)
+    print("saved", OUT)
+
+
+if __name__ == "__main__":
+    main()
