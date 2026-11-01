@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>불광근린공원 A·B 매물 자금 흐름 도식 (v0.6)</title>
+<title>불광근린공원 A·B 매물 자금 흐름 도식 (v0.7)</title>
 <style>
   body{font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;margin:24px;color:#1f2937;background:#fff}
   h1{font-size:20px;margin:0 0 4px}
@@ -32,7 +32,7 @@
 </head>
 <body>
 <h1>불광근린공원 A(331-160, 4.5억) · B(331-175, 4.1억) — 단계별 자금 흐름</h1>
-<div class="sub">전제: 59타입, 승계 가능, 생애최초 주담대로 매수 후 실거주 → 2030 이주(전세 거주) → 2033 입주. 보유현금 2.75, 가용저축 0.354/년, 조합원분양가 9.55, 완공 시세 13.5, 현물보상 = 공시가법·지분법 평균. 단위 억원.</div>
+<div class="sub">전제: 59타입, 승계 가능, 생애최초 주담대로 매수 후 실거주 → 2030 이주(전세 거주) → 2033 입주. 보유현금 2.75, 가용저축 0.354/년, 조합원분양가 9.55, 완공 시세 13.5, 현물보상 = 공시가법·지분법 평균, <b>LH 이주비 = 보상액 × 30%(무이자, 입주 시 상환) 가정</b>. 단위 억원.</div>
 <div class="legend">
   <span><span class="dot" style="background:#047857"></span>유입(+)</span>
   <span><span class="dot" style="background:#b91c1c"></span>유출(−)</span>
@@ -50,7 +50,7 @@
   <div class="rowlab">공통 사건<small>무엇이 일어나나</small></div>
   <div class="neu">매매 계약·잔금<br>생애최초 주담대 실행<br>인테리어 후 전입</div>
   <div class="neu">주담대 원리금 상환<br>주거비 0 (자가)<br>저축 누적</div>
-  <div class="neu">LH 현물보상 확정(감정)<br>→ 빌라 소유권 LH로<br>주담대 전액 상환 필요<br>(공공 이주비 알선 0 가정)<br>전세로 이사(전세대출 2.0)</div>
+  <div class="neu">LH 현물보상 확정(감정)<br>→ 빌라 소유권 LH로<br>주담대 전액 상환 필요<br>LH 이주비(보상액 30%, 무이자)로 일부 충당<br>전세로 이사(전세대출 2.0)</div>
   <div class="neu">전세대출 이자 부담<br>마통 잔액 이자<br>저축으로 마통 상환</div>
   <div class="neu">분담금 = 분양가 − 보상액<br>잔금대출(LTV 40%)<br>전세보증금 회수 = 전세대출 상환</div>
 
@@ -65,17 +65,17 @@
     <div class="bal">순현금 0.65 / 주담대 잔액 1.94</div>
   </div>
   <div>
-    <span class="in">+ 0.354 저축</span><br><span class="out">− 0.131 원리금</span><br><span class="out">− 1.90 주담대 잔액 상환</span><br><span class="out">− 0.09 전세이자</span><br>
+    <span class="in">+ 0.354 저축</span><br><span class="out">− 0.131 원리금</span><br><span class="out">− 1.90 주담대 잔액 상환</span><br><span class="in">+ 0.80 LH 이주비 (2.68×30%)</span><br><span class="out">− 0.09 전세이자</span><br>
     <span class="neu">현물보상 2.68 → 분양가에 상계(현금 수령 0)</span>
-    <div class="bal neg">순현금 −1.12 (마통)</div>
+    <div class="bal neg">순현금 −0.32 (마통) / 이주비 부채 0.80</div>
   </div>
   <div>
-    <span class="in">+ 0.354 ×3 저축</span><br><span class="out">− 0.09 ×3 전세이자</span><br><span class="out">− 0.17 마통이자 누계</span>
-    <div class="bal neg">순현금 −0.50 (마통)</div>
+    <span class="in">+ 0.354 ×3 저축</span><br><span class="out">− 0.09 ×3 전세이자</span><br><span class="out">− 0.03 마통이자 누계</span>
+    <div class="bal">순현금 +0.44 / 이주비 부채 0.80</div>
   </div>
   <div>
-    <span class="out">− 6.87 분담금 (9.55 − 2.68)</span><br><span class="out">− 0.50 마통 상환</span><br><span class="in">+ 5.40 잔금대출 한도 (13.5×40%)</span>
-    <div class="bal neg">필요 대출 7.37 vs 한도 5.40<br><b>부족 1.97</b> · DSR 필요 연소득 1.19</div>
+    <span class="out">− 6.87 분담금 (9.55 − 2.68)</span><br><span class="out">− 0.80 이주비 상환</span><br><span class="in">+ 0.44 보유현금</span><br><span class="in">+ 5.40 잔금대출 한도 (13.5×40%)</span>
+    <div class="bal neg">필요 대출 7.23 vs 한도 5.40<br><b>부족 1.83</b> · DSR 필요 연소득 1.16</div>
   </div>
 
   <div class="rowlab">B 331-175<small>4.1억 · 지분 5.94평<br>보상 2.24</small></div>
@@ -89,17 +89,17 @@
     <div class="bal">순현금 0.72 / 주담대 잔액 1.54</div>
   </div>
   <div>
-    <span class="in">+ 0.354 저축</span><br><span class="out">− 0.104 원리금</span><br><span class="out">− 1.52 주담대 잔액 상환</span><br><span class="out">− 0.09 전세이자</span><br>
+    <span class="in">+ 0.354 저축</span><br><span class="out">− 0.104 원리금</span><br><span class="out">− 1.52 주담대 잔액 상환</span><br><span class="in">+ 0.67 LH 이주비 (2.24×30%)</span><br><span class="out">− 0.09 전세이자</span><br>
     <span class="neu">현물보상 2.24 → 분양가에 상계(현금 수령 0)</span>
-    <div class="bal neg">순현금 −0.64 (마통)</div>
+    <div class="bal">순현금 +0.03 / 이주비 부채 0.67</div>
   </div>
   <div>
-    <span class="in">+ 0.354 ×3 저축</span><br><span class="out">− 0.09 ×3 전세이자</span><br><span class="out">− 0.07 마통이자 누계</span>
-    <div class="bal">순현금 +0.08</div>
+    <span class="in">+ 0.354 ×3 저축</span><br><span class="out">− 0.09 ×3 전세이자</span><br><span class="out">− 0.00 마통이자</span>
+    <div class="bal">순현금 +0.82 / 이주비 부채 0.67</div>
   </div>
   <div>
-    <span class="out">− 7.31 분담금 (9.55 − 2.24)</span><br><span class="in">+ 0.08 보유현금</span><br><span class="in">+ 5.40 잔금대출 한도</span>
-    <div class="bal neg">필요 대출 7.23 vs 한도 5.40<br><b>부족 1.83</b> · DSR 필요 연소득 1.16</div>
+    <span class="out">− 7.31 분담금 (9.55 − 2.24)</span><br><span class="out">− 0.67 이주비 상환</span><br><span class="in">+ 0.82 보유현금</span><br><span class="in">+ 5.40 잔금대출 한도</span>
+    <div class="bal neg">필요 대출 7.16 vs 한도 5.40<br><b>부족 1.76</b> · DSR 필요 연소득 1.15</div>
   </div>
 </div>
 
@@ -112,14 +112,14 @@
     <text x="490" y="215">2030</text><text x="590" y="215">2031</text><text x="690" y="215">2032</text><text x="790" y="215">2033</text>
   </g>
   <!-- scale: 60px per 1억, baseline y=120 -->
-  <polyline fill="none" stroke="#2563eb" stroke-width="2.5" points="100,119.4 200,106.6 300,93.8 400,81.1 500,187.4 600,175.6 700,163.1 800,149.9"/>
-  <polyline fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 4" points="100,120 200,105.6 300,91.3 400,76.9 500,158.2 600,144.7 700,130.3 800,115.1"/>
-  <text x="810" y="152" fill="#2563eb">A −0.50</text>
-  <text x="810" y="112" fill="#d97706">B +0.08</text>
-  <text x="505" y="200" fill="#2563eb">A −1.12</text>
-  <text x="505" y="172" fill="#d97706">B −0.64</text>
+  <polyline fill="none" stroke="#2563eb" stroke-width="2.5" points="100,119.4 200,106.6 300,93.8 400,81.1 500,139.4 600,124.4 700,108.6 800,93.6"/>
+  <polyline fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 4" points="100,120 200,105.6 300,91.3 400,76.9 500,118.0 600,102.2 700,86.4 800,70.8"/>
+  <text x="810" y="96" fill="#2563eb">A +0.44</text>
+  <text x="810" y="68" fill="#d97706">B +0.82</text>
+  <text x="505" y="152" fill="#2563eb">A −0.32</text>
+  <text x="505" y="130" fill="#d97706">B +0.03</text>
   <text x="62" y="64">+1.0</text><text x="62" y="124">0</text><text x="62" y="184">−1.0</text>
-  <text x="430" y="40" fill="#b91c1c">↓ 2030 이주: 주담대 잔액 현금 상환</text>
+  <text x="400" y="40" fill="#b91c1c">↓ 2030 이주: 주담대 잔액 상환 − LH 이주비 30%</text>
 </svg>
 </div>
 
@@ -128,21 +128,22 @@
   <tr><td>조합원분양가(예상, 59)</td><td>9.55</td><td>9.55</td></tr>
   <tr><td>현물보상액 (공시가법 / 지분법 → 평균)</td><td>1.74 / 3.62 → <b>2.68</b></td><td>1.73 / 2.75 → <b>2.24</b></td></tr>
   <tr><td>분담금</td><td>6.87</td><td>7.31</td></tr>
-  <tr><td>입주 시 보유현금</td><td class="red">−0.50</td><td>+0.08</td></tr>
-  <tr><td>필요 대출 (분담금 − 보유현금)</td><td>7.37</td><td>7.23</td></tr>
+  <tr><td>LH 이주비 상환 (보상액 × 30%)</td><td>0.80</td><td>0.67</td></tr>
+  <tr><td>입주 시 보유현금</td><td>+0.44</td><td>+0.82</td></tr>
+  <tr><td>필요 대출 (분담금 + 이주비 상환 − 보유현금)</td><td>7.23</td><td>7.16</td></tr>
   <tr><td>잔금대출 한도 (13.5 × 40%)</td><td>5.40</td><td>5.40</td></tr>
-  <tr><td><b>부족액</b></td><td class="red"><b>1.97</b></td><td class="red"><b>1.83</b></td></tr>
-  <tr><td>DSR 필요 연소득</td><td>1.19</td><td>1.16</td></tr>
+  <tr><td><b>부족액</b></td><td class="red"><b>1.83</b></td><td class="red"><b>1.76</b></td></tr>
+  <tr><td>DSR 필요 연소득</td><td>1.16</td><td>1.15</td></tr>
   <tr><td>총지출 (매매가+부대비+인테리어+분담금)</td><td>11.64</td><td>11.68</td></tr>
   <tr><td><b>안전마진 (13.5 − 총지출)</b></td><td><b>+1.86</b></td><td><b>+1.82</b></td></tr>
   <tr><td>처분 가능 시점 (전매제한 3년 가정)</td><td>2036</td><td>2036</td></tr>
 </table>
 
 <div class="note">
-• 2030 이주가 병목: 공공 이주비 알선이 0이라는 가정 때문에 주담대 잔액(A 1.90 / B 1.52)을 현금으로 갚으며 마통으로 떨어지고, A는 입주까지 회복하지 못함.<br>
+• 2030 이주: 주담대 잔액(A 1.90 / B 1.52)을 LH 이주비(A 0.80 / B 0.67, 보상액 30% 가정)와 저축으로 갚음. 이주비 비율 0→40%로 올려도 입주 시 부족액은 1.97→1.80(A)로 0.2 정도만 줄어듦 — 이주비는 입주 때 다시 갚아야 하므로 유동성만 돕고 잔금 부족은 해결하지 못함.<br>
 • 현물보상액은 현금으로 들어오지 않고 분양가에서 상계되므로, 이주 시점에 손에 쥐는 돈은 없음. 분담금은 완공 시 전액 납부 가정(실제 분납 조건 미확인).<br>
 • 두 매물의 차이는 2033 정산에서 거의 사라짐(안전마진 0.04, 부족액 0.14 차이). 보상 추정이 공시가법 쪽이면 B, 지분법 쪽이면 A가 유리.<br>
-• 숫자는 analysis/bulgwang_park_판단표.xlsx v0.6과 동일. 가정 시트의 완공 시세·조합원분양가를 바꾸면 ⑤의 값이 달라짐.
+• 숫자는 analysis/bulgwang_park_판단표.xlsx v0.7과 동일. 이주비 비율·이자 조건은 LH 확인 필요. 가정 시트의 완공 시세·조합원분양가를 바꾸면 ⑤의 값이 달라짐.
 </div>
 </body>
 </html>
