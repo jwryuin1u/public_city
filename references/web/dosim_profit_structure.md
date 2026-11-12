@@ -40,3 +40,21 @@
 - 불광동 329-32(역세권형, 준주거 변경, 386%): 준주거는 이미 1.4배 대상이라 추가 효과 제한적. 4.9만㎡라 공원·녹지는 원래 미해당.
 
 출처: https://www.ajunews.com/view/20260406140941911 , https://www.arunews.com/news/articleView.html?idxno=61383 , https://www.wowtv.co.kr/NewsCenter/News/Read?articleId=A202604060189 , https://m.news.nate.com/view/20260406n31529
+
+---
+
+# 추가 검색 (2026.11.12): 분양가상한제 제외, 전매·실거주 의무
+원문 사이트(lh.or.kr, arunews.com)는 세션 네트워크 제한으로 못 열어 검색 요약 기준.
+
+- **분양가상한제 제외**: 주택법 개정으로 도심 공공주택 복합지구·주거재생혁신지구·주거환경개선사업에서 공급하는 주택은 분상제 미적용. 국회 본회의 의결, 공포 3개월 후 시행. (위클리한국주택경제신문)
+- **전매**: 기존에는 우선공급 주택을 소유권이전등기 이후에만 전매 허용. 공공주택특별법 개정으로 **분양계약 체결 이후 분양권 전매 허용**. (ER 이코노믹리뷰)
+- **실거주 의무**: 국토부 문답(2021) — 다른 정비사업과 마찬가지로 우선공급 대상자에게 실거주 의무 없음, 등기 후 전매 허용. (대한전문건설신문) 구 자료라 현행 LH 공고로 재확인 필요.
+- **현물보상권 승계**: 2025.8.1 이후 양도인 기준 1회, 무주택자만, 법인 불가, 사업계획승인 후 6개월까지. (디벨로퍼뉴스, 뉴스1, 하우징타임즈)
+- LH 방학역 공고(2025.07): 이익공유형 등 현물보상 가격은 분양가의 50~80% 범위 협의, 전매제한 예외 허용 표 존재(내용 미확인).
+
+## 모델 반영 (v1.2)
+- 전매제한 3년 → 0, 실거주 의무 3년 → 0 (가정 시트, 재확인 필요 표기).
+- "일반분양가가 상한제로 막혀 있다"는 이전 설명은 폐기. 일반분양가는 시세 바탕 LH 산정, 조합원분양가 = 일반분양가 × (1 − 할인율).
+- 입주 시 전세 놓고 잔금, 또는 분양계약 후 전매가 가능해져 잔금대출 한도(4~6억)가 유일한 병목이 아님.
+
+출처: http://www.arunews.com/news/articleView.html?idxno=42156 , https://www.econovill.com/news/articleView.html?idxno=678841 , https://www.koscaj.com/news/articleView.html?idxno=218089 , https://www.dpnews.co.kr/news/articleView.html?idxno=1260 , https://www.news1.kr/realestate/general/6257412 , https://www.lh.or.kr/boardDownload.es?bid=0060&list_no=728350&seq=1
