@@ -58,3 +58,12 @@
 - 입주 시 전세 놓고 잔금, 또는 분양계약 후 전매가 가능해져 잔금대출 한도(4~6억)가 유일한 병목이 아님.
 
 출처: http://www.arunews.com/news/articleView.html?idxno=42156 , https://www.econovill.com/news/articleView.html?idxno=678841 , https://www.koscaj.com/news/articleView.html?idxno=218089 , https://www.dpnews.co.kr/news/articleView.html?idxno=1260 , https://www.news1.kr/realestate/general/6257412 , https://www.lh.or.kr/boardDownload.es?bid=0060&list_no=728350&seq=1
+
+---
+
+# 추가 검색 (2026.11.13): 용적률 1.4배 특례 진행 현황
+- 제도: 2026.4.6 국무회의 의결(9·7 공급대책 후속). 공포일·시행일·경과규정은 검색으로 미확인.
+- 적용 사례: 중랑구 상봉터미널 인근 — 1.2배 기준 315%(35층) → 1.4배 적용 시 350%(39층). 주민대표회의가 LH와 사업계획 재검토 후 공모 예정. (하우징헤럴드)
+- 불광근린공원 적용 여부: 미확인 (구역 검색 안 함).
+- 대략 추정: 법적 상한 1종 200%·2종 250% × 1.2 → 1종 32%·2종 68% 가중 281% ≈ 현 계획 283%. 1.4배면 가중 약 328% (+16%) → 2,150세대가 약 2,450~2,500세대로 늘 여지. 추정치.
+출처: https://www.mt.co.kr/estate/2026/04/06/2026040610561988063 , https://www.housingherald.co.kr/news/articleView.html?idxno=61413 , https://www.newspim.com/news/view/20260406000473 , https://www.sedaily.com/article/20028986
