@@ -71,6 +71,13 @@
       "skillPath": "skills/test-driven-development/SKILL.md",
       "computedHash": "2782702b2cf69ace085ed30d067b6f8bfd2d777ad51770fc5bdae9cb5c1b5c04"
     },
+    "tlc-spec-driven": {
+      "source": "tech-leads-club/agent-skills",
+      "commit": "e74dc8a7e8d59bb36f267afd089580e0858e224a",
+      "sourceType": "github",
+      "skillPath": "packages/skills-catalog/skills/(development)/tlc-spec-driven/SKILL.md",
+      "computedHash": "8b47d4d0704034fe9d96e499515f95f5cda817061570f344b78eb05cf1e82f07"
+    },
     "using-git-worktrees": {
       "source": "obra/superpowers",
       "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
