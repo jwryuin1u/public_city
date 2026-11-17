@@ -1,7 +1,7 @@
 # 롯데면세점 재고배분 PoC Design
 
 **Spec**: `.specs/features/allocation-poc/spec.md`
-**Status**: Draft
+**Status**: Approved
 
 전체 구조와 Azure 서비스 선택의 근거는 `artifacts/system_design_allocation-poc.md`와 `artifacts/adr_*.md`에 있다. 이 문서는 그 구조를 만들 단위(폴더, 모듈, 주고받는 것)로 나눈다. 파일 경로는 새로 만들 프로젝트 저장소 기준이며, 개발 도구(FastAPI, Bicep, pytest)는 제안이다.
 

@@ -11,8 +11,8 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/allocation-poc/design.md`
-**Status**: Draft
-**Approved**: 승인 전
+**Status**: Approved
+**Approved**: 2026-11-17 - user: "승인할게. 다음 작업 이어서 진행해줘"
 **Build**: `ruff check .; ruff format --check .; az bicep build --file infra/main.bicep`
 **Run unit**: `pytest tests/unit -v`
 **Run api**: `pytest tests/api -v`
