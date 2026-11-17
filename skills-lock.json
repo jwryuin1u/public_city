@@ -8,6 +8,13 @@
       "skillPath": "skills/brainstorming/SKILL.md",
       "computedHash": "a7424777b7f81e3eb9b4556d29fe233553736d8255780d3e1feea190fef61fef"
     },
+    "designing-systems": {
+      "source": "dralgorhythm/claude-agentic-framework",
+      "commit": "6436a20fadad6de8e48aebfb6821d7269341c057",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/architecture/designing-systems/SKILL.md",
+      "computedHash": "8f241de44aeed0cdbff2e81d0383ea8a14221f2d749da27d9ea89fafb3e4989f"
+    },
     "diagnosing-superpowers": {
       "source": "obra/superpowers",
       "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
