@@ -1,6 +1,6 @@
-"""목업 시연용 더미 데이터 생성기.
+"""표본 데이터 생성기.
 
-모든 값은 가상이다. 파일 이름과 형식(인코딩, 구분자, 헤더 위치)만 고객 기초정보 PDF에 적힌
+값은 임의로 만든 표본이다. 파일 이름과 형식(인코딩, 구분자, 헤더 위치)만 고객 기초정보 PDF에 적힌
 현행 형식을 따른다. 재고 파일의 72개 컬럼 중 PDF에 이름이 나온 15개만 실제 이름이고
 나머지는 `미사용_NN` 자리표시다. 실행: python3 generate.py
 """
@@ -17,7 +17,7 @@ DAY = "20261117"
 STORES = ["명동본점", "월드타워", "부산", "제주", "인천공항T1", "인천공항T2", "김해공항", "김포공항", "김포공항B", "제주공항"]
 CHANNELS = ["명동본점", "월드타워", "부산", "제주", "인천공항T1", "인천공항T2", "김해공항", "김포공항", "제주공항", "온라인"]
 CATEGORIES = ["COS and PFM", "JEW and WATCH", "LIQUOR and TOBACCO", "ACC and GIFT", "FOOD", "ELECTRONICS"]
-BRANDS = {c: [f"가상브랜드{chr(65 + i)}{j}" for j in range(1, 5)] for i, c in enumerate(CATEGORIES)}
+BRANDS = {c: [f"브랜드 {chr(65 + i)}{j}" for j in range(1, 5)] for i, c in enumerate(CATEGORIES)}
 
 # 재고 합본 CSV의 72개 컬럼 (0부터 센 위치). PDF 2-2에 나온 것만 실제 이름.
 KNOWN = {1: "창고", 2: "점", 5: "상품코드", 6: "재고 관리유형", 7: "재고 관리년월", 8: "반입년월", 11: "상품명",
@@ -32,7 +32,7 @@ def make_skus():
     for cat in CATEGORIES:
         for brand in BRANDS[cat]:
             for k in range(1, 7):
-                skus.append({"code": str(n), "cat": cat, "brand": brand, "name": f"{brand} 가상상품 {k}",
+                skus.append({"code": str(n), "cat": cat, "brand": brand, "name": f"{brand} 상품 {k}",
                              "price": random.choice([28, 45, 72, 120, 185, 260])})
                 n += 1
     return skus
@@ -90,7 +90,7 @@ def main():
     wb = Workbook()
     ws = wb.active
     ws.title = "채널별일예상판매수량"
-    ws.append(["(보조 행) 가상 데이터"])
+    ws.append(["(보조 행)"])
     ws.append(["구분", "채널", "카테고리", "브랜드", "상품코드", "바이어명", "부서명", "N-1월 판매수량", "N-2월 판매수량",
                "60일 일평균팔림세", "120일 일평균팔림세", "A등급여부", "최종일예상판매수량", "조정 사유"])
     n = 0
@@ -100,7 +100,7 @@ def main():
                 continue
             kind = "시내점" if ch in STORES[:4] else ("온라인" if ch == "온라인" else "공항")
             d60 = round(random.uniform(0, 3.5), 2)
-            ws.append([kind, ch, sku["cat"], sku["brand"], sku["code"], "가상바이어", "가상부서", random.randint(0, 90),
+            ws.append([kind, ch, sku["cat"], sku["brand"], sku["code"], "바이어A", "MD1팀", random.randint(0, 90),
                        random.randint(0, 90), d60, round(d60 * 0.9, 2), random.choice(["Y", "N"]), d60, ""])
             n += 1
     wb.save(inp / "일예상판매수량_20261116.xlsx")
@@ -151,22 +151,22 @@ def main():
         wb.save(mst / fname)
     out["제외·전용 SKU"] = sum(len(b) for _, b in sheets.values())
 
-    # 시연용 프로그램 파일 (자리표시. 실제 배분 로직 없음)
+    # 프로그램 파일 표본 (등록 화면 확인용)
     code = ROOT / "code"
     code.mkdir(exist_ok=True)
-    note = '"""목업 시연용 자리표시 파일. 실제 배분 로직은 들어 있지 않다. {}"""\n'
+    note = '"""pipeline 표본 파일. {}"""\n'
     (code / "pipeline_운영본_v0.3.py").write_text(note.format("현행 운영본 역할.") + "DEFAULT_SETTINGS = {'hyst_min_qty': 3}\n", encoding="utf-8")
     (code / "pipeline_수정본_최소보충변경.py").write_text(note.format("최소 보충 수량 처리를 고친 수정본 역할.") + "DEFAULT_SETTINGS = {'hyst_min_qty': 2}\n", encoding="utf-8")
-    (code / "pipeline_문법오류.py").write_text(note.format("등록 거절 시연용.") + "def allocate(:\n    pass\n", encoding="utf-8")
-    (code / "pipeline_규칙위반.py").write_text(note.format("발송 한도 위반 시연용.") + "SEND_LIMIT_CHECK = False\n", encoding="utf-8")
+    (code / "pipeline_문법오류.py").write_text(note.format("문법 오류가 있는 표본.") + "def allocate(:\n    pass\n", encoding="utf-8")
+    (code / "pipeline_규칙위반.py").write_text(note.format("발송 한도 확인을 끈 표본.") + "SEND_LIMIT_CHECK = False\n", encoding="utf-8")
 
-    # 질문 목록에 답변이 적혀 돌아온 파일 (목업의 질문·답변 화면에 올린다)
+    # 질문 목록에 답변이 적혀 돌아온 파일 (질문·답변 화면에 올린다)
     ans = [
-        ["Q-01", "바이어 · 인천공항T1", "2000000052", "가상브랜드C1 가상상품 4", "과다 이동", "", "정상", "11/20 단체 예약 40개가 있어 필요함"],
-        ["Q-02", "프로그램 작성자", "2000000003", "가상브랜드A1 가상상품 3", "이동 건수 이상", "", "파라미터 조정", "최소 보충 수량 5로 다시 실행"],
-        ["Q-03", "바이어 · 제주", "2000000101", "가상브랜드E1 가상상품 5", "미충전", "", "정상", "발주로 채움. 11/18 발주 예정"],
-        ["Q-04", "바이어 · 월드타워", "2000000066", "가상브랜드C3 가상상품 6", "전일 대비 급변", "", "이동 제외", "11/19~21 매장 행사 예정. 온라인으로 전환하지 말 것"],
-        ["Q-05", "바이어 · 제주공항", "2000000079", "가상브랜드D1 가상상품 1", "과다 이동", "", "이동 제외", "진열 공간이 없어 이번 주는 받지 않음"],
+        ["Q-01", "바이어 · 인천공항T1", "2000000052", "브랜드 C1 상품 4", "과다 이동", "", "정상", "11/20 단체 예약 40개가 있어 필요함"],
+        ["Q-02", "프로그램 작성자", "2000000003", "브랜드 A1 상품 3", "이동 건수 이상", "", "파라미터 조정", "최소 보충 수량 5로 다시 실행"],
+        ["Q-03", "바이어 · 제주", "2000000101", "브랜드 E1 상품 5", "미충전", "", "정상", "발주로 채움. 11/18 발주 예정"],
+        ["Q-04", "바이어 · 월드타워", "2000000066", "브랜드 C3 상품 6", "전일 대비 급변", "", "이동 제외", "11/19~21 매장 행사 예정. 온라인으로 전환하지 말 것"],
+        ["Q-05", "바이어 · 제주공항", "2000000079", "브랜드 D1 상품 1", "과다 이동", "", "이동 제외", "진열 공간이 없어 이번 주는 받지 않음"],
         ["Q-06", "프로그램 작성자", "—", "전체", "운영 버전과 차이", "", "정상", "미충전을 줄이려던 수정이라 의도한 변화"],
     ]
     out["질문 답변"] = write_csv(ROOT / "answers" / "질문목록_답변완료.csv",

@@ -1,37 +1,93 @@
-// 목업 시연 시나리오를 자동으로 조작하고 단계별 화면과 영상을 저장한다.
+// 사용 흐름을 자동으로 조작하고 단계별 화면과 영상을 저장한다.
 // 실행: node operate.js        (index.html → walkthrough/)
 //       node operate.js v2     (index_v2.html → walkthrough_v2/)
+//       node operate.js mvp slow   (index_mvp.html → walkthrough_mvp/, 사람이 쓰는 속도)
 // 결과: walkthrough/NN_이름.png, walkthrough/demo.webm (전체), walkthrough/demo_질문답변.webm (질문·답변과 재테스트만)
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
 const ROOT = __dirname;
-const V2 = process.argv[2] === 'v2';
-const PAGE = V2 ? 'index_v2.html' : 'index.html';
-const OUT = path.join(ROOT, V2 ? 'walkthrough_v2' : 'walkthrough');
+const VARIANT = ['v2', 'mvp'].includes(process.argv[2]) ? process.argv[2] : 'v1';
+const SLOW = process.argv.includes('slow'); // 사람이 쓰는 속도: 커서 이동, 한 글자씩 입력, 결과를 읽는 스크롤
+const PAGE = { v1: 'index.html', v2: 'index_v2.html', mvp: 'index_mvp.html' }[VARIANT];
+const OUT = path.join(ROOT, { v1: 'walkthrough', v2: 'walkthrough_v2', mvp: 'walkthrough_mvp' }[VARIANT]);
 // 파일은 내용을 읽어 넘긴다 (경로로 넘기면 일부 환경에서 선택되지 않는다)
 const D = (...p) => {
   const f = path.join(ROOT, 'dummy-data', ...p);
   return { name: path.basename(f), mimeType: 'application/octet-stream', buffer: fs.readFileSync(f) };
 };
-const PAUSE = 900;
+const PAUSE = SLOW ? 1700 : 900;
 
 async function session(browser, videoName, body) {
   const ctx = await browser.newContext({
     viewport: { width: 1360, height: 860 }, deviceScaleFactor: 2, locale: 'ko-KR',
     recordVideo: { dir: OUT, size: { width: 1360, height: 860 } },
   });
+  if (SLOW) {
+    // 녹화용 커서 표시 (화면 파일에는 들어가지 않는다)
+    await ctx.addInitScript(() => {
+      window.addEventListener('DOMContentLoaded', () => {
+        const c = document.createElement('div');
+        c.style.cssText = 'position:fixed;left:0;top:0;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:rgba(23,23,23,.75);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);z-index:99999;pointer-events:none;transform:translate(680px,430px)';
+        document.body.appendChild(c);
+        window.addEventListener('mousemove', (e) => { c.style.transform = `translate(${e.clientX}px,${e.clientY}px)`; }, true);
+      });
+    });
+  }
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto('file://' + path.join(ROOT, PAGE));
   // 로딩 표시가 끝난 뒤에 다음 동작을 한다
   page.idle = () => page.waitForFunction(() => !document.body.classList.contains('busy'));
-  for (const m of ['click', 'fill', 'selectOption', 'setInputFiles']) {
-    const orig = page[m].bind(page);
-    page[m] = async (...a) => { await page.idle(); return orig(...a); };
-  }
+  const raw = {};
+  for (const m of ['click', 'fill', 'selectOption', 'setInputFiles']) raw[m] = page[m].bind(page);
+  const moveTo = async (sel) => {
+    const loc = page.locator(sel).first();
+    if (!(await loc.count())) return;
+    await loc.scrollIntoViewIfNeeded();
+    const b = await loc.boundingBox();
+    if (b) await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 30 });
+    await page.waitForTimeout(350);
+  };
+  page.click = async (sel, ...r) => {
+    await page.idle();
+    if (SLOW) await moveTo(sel);
+    await raw.click(sel, ...r);
+    if (SLOW) await page.waitForTimeout(500);
+  };
+  page.fill = async (sel, text) => {
+    await page.idle();
+    if (!SLOW) return raw.fill(sel, text);
+    await moveTo(sel);
+    await raw.click(sel);
+    await page.keyboard.press('Control+A');
+    await page.locator(sel).pressSequentially(text, { delay: 85 });
+    await page.waitForTimeout(400);
+  };
+  page.selectOption = async (sel, v) => {
+    await page.idle();
+    if (SLOW) { await moveTo(sel); await page.waitForTimeout(400); }
+    await raw.selectOption(sel, v);
+    if (SLOW) await page.waitForTimeout(700);
+  };
+  page.setInputFiles = async (sel, f) => {
+    await page.idle();
+    if (SLOW) { await moveTo(`label.file:has(${sel}) .btn`); await page.waitForTimeout(700); }
+    await raw.setInputFiles(sel, f);
+    if (SLOW) await page.waitForTimeout(900);
+  };
+  // 결과를 읽듯이 아래로 훑고 다시 위로
+  page.look = async () => {
+    if (!SLOW) return;
+    const h = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+    for (let y = 520; y < h + 520; y += 520) {
+      await page.evaluate((to) => window.scrollTo({ top: to, behavior: 'smooth' }), Math.min(y, h));
+      await page.waitForTimeout(1500);
+    }
+    if (h > 0) { await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' })); await page.waitForTimeout(900); }
+  };
   await body(page);
   const video = page.video();
   await ctx.close();
@@ -101,6 +157,7 @@ async function questionLoop(page, shot) {
       const file = String(n).padStart(2, '0') + '_' + name + '.png';
       await page.idle();
       await page.waitForTimeout(PAUSE);
+      await page.look();
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: path.join(OUT, file), fullPage: true });
       log.push({ file, caption, part: shot.part });
@@ -186,7 +243,7 @@ async function questionLoop(page, shot) {
 
   // ===== 질문·답변과 재테스트만 담은 짧은 영상 =====
   const errors2 = await session(browser, 'demo_질문답변.webm', async (page) => {
-    const wait = async () => { await page.idle(); await page.waitForTimeout(1400); };
+    const wait = async () => { await page.idle(); await page.waitForTimeout(SLOW ? 2000 : 1400); };
     await wait();
     await registerAndRun(page, wait);
     await page.evaluate(() => document.querySelector('#btnMakeQ').scrollIntoView({ block: 'center' }));
