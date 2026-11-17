@@ -1,6 +1,6 @@
 # 롯데면세점 재고배분 PoC Specification
 
-**Approved**: 승인 전
+**Approved**: 2026-11-17 - user: "다음 작업 이어서 해줘"
 
 읽는 법: 수용 기준은 EARS 표기를 쓴다. `WHEN`(~하면), `IF`(~인 경우, 주로 오류), `WHILE`(~인 동안), `WHERE`(~기능이 있을 때), `SHALL`(반드시 ~한다)은 표기 규칙이라 영어로 둔다. "시스템"은 이 PoC에서 만드는 전체를 가리킨다.
 
@@ -438,26 +438,26 @@ S&OP 담당자 한 명이 매일 개인 PC에서 입력 10종을 손으로 모�
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| COL-01 | P1: 기간계 데이터 자동 수집 | Design | Pending |
-| INPUT-01 | P1: 입력 묶음 구성 | Design | Pending |
-| VAL-01 | P1: 입력 검증 | Design | Pending |
-| CODE-01 | P1: 프로그램 등록과 버전 | Design | Pending |
-| PARAM-01 | P1: 파라미터 관리 | Design | Pending |
-| MST-01 | P1: 마스터 데이터 올리기 | Design | Pending |
-| RUN-01 | P1: 검증 실행 | Design | Pending |
-| RULE-01 | P1: 결과 검증 | Design | Pending |
-| CMP-01 | P1: 결과 비교 | Design | Pending |
-| ISO-01 | P1: 격리 실행 | Design | Pending |
-| AUTH-01 | P1: 로그인과 역할 | Design | Pending |
-| OPS-01 | P2: 운영 실행, 승인, 결과 내려받기 | Design | Pending |
-| PROMO-01 | P2: 운영 반영 요청과 승인 | Design | Pending |
-| HIST-01 | P2: 실행 이력 | Design | Pending |
-| SCHED-01 | P3: 정해진 시각의 자동 시작 | Design | Pending |
-| NOTI-01 | P3: 알림 | Design | Pending |
-| MEAS-01 | P3: 현행 대비 시간 측정 | Design | Pending |
-| EDGE-01 | Edge Cases | Design | Pending |
+| COL-01 | P1: 기간계 데이터 자동 수집 | Tasks | In Tasks |
+| INPUT-01 | P1: 입력 묶음 구성 | Tasks | In Tasks |
+| VAL-01 | P1: 입력 검증 | Tasks | In Tasks |
+| CODE-01 | P1: 프로그램 등록과 버전 | Tasks | In Tasks |
+| PARAM-01 | P1: 파라미터 관리 | Tasks | In Tasks |
+| MST-01 | P1: 마스터 데이터 올리기 | Tasks | In Tasks |
+| RUN-01 | P1: 검증 실행 | Tasks | In Tasks |
+| RULE-01 | P1: 결과 검증 | Tasks | In Tasks |
+| CMP-01 | P1: 결과 비교 | Tasks | In Tasks |
+| ISO-01 | P1: 격리 실행 | Tasks | In Tasks |
+| AUTH-01 | P1: 로그인과 역할 | Tasks | In Tasks |
+| OPS-01 | P2: 운영 실행, 승인, 결과 내려받기 | Tasks | In Tasks |
+| PROMO-01 | P2: 운영 반영 요청과 승인 | Tasks | In Tasks |
+| HIST-01 | P2: 실행 이력 | Tasks | In Tasks |
+| SCHED-01 | P3: 정해진 시각의 자동 시작 | Tasks | In Tasks |
+| NOTI-01 | P3: 알림 | Tasks | In Tasks |
+| MEAS-01 | P3: 현행 대비 시간 측정 | Tasks | In Tasks |
+| EDGE-01 | Edge Cases | Tasks | In Tasks |
 
-**Coverage:** 18 total, 0 mapped to tasks, 18 unmapped (Tasks 단계에서 연결)
+**Coverage:** 18 total, 18 mapped to tasks, 0 unmapped
 
 ---
 
