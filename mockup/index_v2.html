@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>재고배분 실행·검증 목업 v2</title>
+<style>
+:root{
+  --bg:#fafafa; --panel:#fff; --raised:#f4f4f5; --line:rgba(23,23,23,.09); --ink:#171717; --sub:#525252; --mute:#737373;
+  --accent:#0f5c5c; --ok:#17794a; --warn:#96600a; --bad:#c4291c;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","D2Coding","NanumGothicCoding",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/20px "Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","NanumGothic",sans-serif;font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-size:13px}
+header{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;line-height:1;margin:0;font-weight:600}
+.tag{font-size:12px;line-height:16px;padding:2px 8px;border-radius:6px;background:var(--raised);color:var(--sub)}
+header .sp{flex:1}
+header label{font-size:12px;color:var(--mute)}
+#bar{position:fixed;left:0;top:0;height:2px;width:100%;background:var(--accent);transform:scaleX(0);transform-origin:left;z-index:9;opacity:0}
+body.busy #bar{opacity:1;transform:scaleX(.92);transition:transform var(--busy,500ms) var(--ease)}
+select,input[type=text],input[type=number]{font:inherit;height:32px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+select:focus-visible,input:focus-visible,.btn:focus-visible,nav button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=number]{width:96px}
+input.changed{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.wrap{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:0 12px 24px}
+nav h2{font-size:12px;line-height:16px;color:var(--mute);margin:24px 8px 8px;font-weight:400}
+nav button{display:flex;align-items:center;gap:8px;width:100%;height:32px;margin-bottom:2px;text-align:left;padding:0 8px;border:0;background:none;font:inherit;color:var(--sub);border-radius:8px;cursor:pointer;transition:background-color 140ms var(--ease),color 140ms var(--ease)}
+nav button:hover{background:var(--raised);color:var(--ink)}
+nav button.on{background:var(--raised);color:var(--ink);font-weight:500}
+nav button .n{font-family:var(--mono);color:var(--mute);font-size:12px;width:20px}
+nav button .dot{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--mute)}
+main{padding:32px 32px 64px;max-width:1240px}
+main.enter>*{animation:rise 320ms var(--ease) both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+main h2{font-size:24px;line-height:32px;margin:0 0 4px;font-weight:500}
+.lead{color:var(--sub);margin:0 0 24px;max-width:72ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card h3{font-size:15px;line-height:20px;margin:0 0 12px;font-weight:500}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>span{font-size:12px;line-height:16px;color:var(--mute)}
+.btn{font:inherit;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink);white-space:nowrap;transition:background-color 140ms var(--ease),transform 140ms var(--ease)}
+.btn:hover{background:var(--raised)}
+.btn:active{transform:scale(.98)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.btn.pri:hover{background:#0b4a4a}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.loading{color:transparent;position:relative;pointer-events:none}
+.btn.loading::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid currentColor;border-color:var(--mute) transparent var(--mute) transparent;animation:spin 700ms linear infinite}
+.btn.pri.loading::after{border-color:#fff transparent #fff transparent}
+@keyframes spin{to{transform:rotate(360deg)}}
+.file{display:flex;align-items:center;gap:8px;height:32px}
+.file input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.file .fname{color:var(--mute);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .fname.has{color:var(--ink)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;line-height:16px;color:var(--mute);font-weight:400}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right}
+.st{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;color:var(--ink)}
+.st i{width:8px;height:8px;border-radius:50%;background:var(--mute);flex:none}
+.c-ok i{background:var(--ok)} .c-warn i{background:var(--warn)} .c-bad i{background:var(--bad)} .c-info i{background:var(--accent)} .c-mute{color:var(--mute)}
+.c-bad{color:var(--bad)}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);border-radius:8px}
+.stat{padding:16px;border-left:1px solid var(--line)}
+.stat:first-child{border-left:0}
+.stat b{display:block;font-size:28px;line-height:32px;font-weight:500}
+.stat>span{display:block;font-size:12px;line-height:16px;color:var(--mute);margin-top:4px}
+.stat i{font-style:normal;font-size:12px;line-height:16px;display:block;margin-top:8px;color:var(--sub);white-space:nowrap}
+.note+.row,.note+.btn{margin-top:12px}
+b,strong{font-weight:600}
+th,td.mono{white-space:nowrap}
+h3 .st,h3 .note{margin-left:8px}
+.file .btn{display:inline-flex;align-items:center}
+.up,.down{color:var(--ink);font-weight:500} .same{color:var(--mute)}
+.note{font-size:12px;line-height:16px;color:var(--mute);margin:8px 0 0}
+span.note{margin:0;font-weight:400}
+.msg{padding:12px 16px;border-radius:8px;margin:12px 0;background:var(--raised);border-left:3px solid var(--mute);color:var(--ink)}
+.msg.bad{border-left-color:var(--bad)} .msg.warn{border-left-color:var(--warn)} .msg.ok{border-left-color:var(--ok)} .msg.info{border-left-color:var(--accent)}
+.msg .btn{margin-left:8px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0 4px}
+.steps div{font-size:12px;line-height:16px;color:var(--mute);padding-top:8px;position:relative}
+.steps div::before,.steps div::after{content:"";position:absolute;left:0;top:0;height:2px;width:100%;border-radius:1px;background:var(--line)}
+.steps div::after{background:var(--ink);transform:scaleX(0);transform-origin:left}
+.steps div.done{color:var(--ink)} .steps div.done::after{transform:scaleX(1)}
+.steps div.now{color:var(--ink);font-weight:500} .steps div.now::after{background:var(--accent);animation:fill var(--dur,1s) linear both}
+.steps div.hold::after{background:var(--warn);transform:scaleX(1)}
+.steps div.fail{color:var(--bad)} .steps div.fail::after{background:var(--bad);transform:scaleX(1)}
+@keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.params{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 24px}
+ul.plan{margin:0 0 12px;padding-left:20px}
+ul.plan li{margin-bottom:4px}
+#toast{position:fixed;right:24px;bottom:24px;background:var(--ink);color:#fff;padding:12px 16px;border-radius:8px;opacity:0;transform:translateY(8px);transition:opacity 200ms var(--ease),transform 200ms var(--ease);max-width:420px;pointer-events:none}
+#toast.show{opacity:1;transform:none}
+.order{display:inline-block;width:20px;font-family:var(--mono);font-size:12px;color:var(--mute)}
+code{font-family:var(--mono);font-size:13px;background:#fff;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+@media (max-width:900px){.wrap{grid-template-columns:1fr} nav{border-right:0;border-bottom:1px solid var(--line)} .grid5,.params,.two{grid-template-columns:1fr 1fr} .stat{border-left:0}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:1ms!important;transition-duration:1ms!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>재고배분 실행·검증</h1>
+  <span class="tag">목업 · 숫자는 모두 가상</span>
+  <span class="sp"></span>
+  <label for="role">역할</label>
+  <select id="role">
+    <option value="all">시연용 (모든 역할)</option>
+    <option value="user">현업 사용자</option>
+    <option value="sop">S&amp;OP 담당자</option>
+    <option value="md">MD</option>
+    <option value="it">IT혁신팀</option>
+    <option value="buyer">바이어 (점별 재고 신청자)</option>
+  </select>
+  <button class="btn" id="reset">초기화</button>
+</header>
+<div class="wrap">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div id="bar"></div>
+<div id="toast"></div>
+
+<script>
+// ---------- 고정 데이터 (가상) ----------
+const TODAY = '20261117';
+const CATS = ['COS and PFM','JEW and WATCH','LIQUOR and TOBACCO','ACC and GIFT','FOOD','ELECTRONICS'];
+const STORES = ['명동본점','월드타워','부산','제주','인천공항T1','인천공항T2','김해공항','김포공항','김포공항B','제주공항'];
+const KNOWN = {1:'창고',2:'점',5:'상품코드',6:'재고 관리유형',7:'재고 관리년월',8:'반입년월',11:'상품명',12:'Category',13:'Brand',17:'매가($)',22:'가용_일반가용',23:'가용_온라인 일반가용',68:'선하증권관리ID',69:'발주번호',70:'코너',71:'source_file'};
+const BASE_COLS = Array.from({length:72},(_,i)=>KNOWN[i]||('미사용_'+String(i).padStart(2,'0')));
+const COUNT_LABELS = ['배분 검토 상품','점간 이동 지시','온·오프 전환 지시','미충전 부족분','발주 검토 대상'];
+const RULES = ['총량 보존','최소보장','그룹 내 이동','발송 한도','전환 한도'];
+const BASE = {'20260812':[21912,214,37,688,6105],'20261116':[21744,198,31,652,6020],'20261117':[21803,207,34,671,6077]};
+const PARAMS = [
+  ['base_doi','기본커버일수',7,1,60],['min_days','결품방지 최소보장일수',5,1,30],['hyst_min_qty','최소 보충 수량',3,0,50],
+  ['online_mfg_max_months','제조 경과 제외 기준(개월)',21,0,60],['online_exp_min_months','유효기한 임박 제외 기준(개월)',6,0,24],
+  ['transfer_mfg_max_months','반입 경과 제외 기준(개월)',22,0,60]];
+const FIXED_PARAMS = '프리미엄 0/0/0 · 이동생략 0.0 · 통물 한정 켬 · 점센터 보호 3 · 경고 민감도 2.0 · 과다 이동 10 · 미등록 브랜드 양수도 제외 · 헤더 행 2';
+const SKU_POOL = [['2000000003','가상브랜드A1 가상상품 3','COS and PFM'],['2000000017','가상브랜드A3 가상상품 5','COS and PFM'],['2000000031','가상브랜드B2 가상상품 1','JEW and WATCH'],
+  ['2000000052','가상브랜드C1 가상상품 4','LIQUOR and TOBACCO'],['2000000058','가상브랜드C2 가상상품 4','LIQUOR and TOBACCO'],['2000000066','가상브랜드C3 가상상품 6','LIQUOR and TOBACCO'],
+  ['2000000079','가상브랜드D1 가상상품 1','ACC and GIFT'],['2000000090','가상브랜드D2 가상상품 6','ACC and GIFT'],['2000000101','가상브랜드E1 가상상품 5','FOOD'],
+  ['2000000113','가상브랜드E3 가상상품 5','FOOD'],['2000000124','가상브랜드F1 가상상품 4','ELECTRONICS'],['2000000139','가상브랜드F3 가상상품 1','ELECTRONICS']];
+const ROUTES = ['인천공항T1 → 제주공항','월드타워 → 명동본점','명동본점 → 제주','인천공항T2 → 인천공항T1','부산 → 김해공항','월드타워 → 온라인'];
+const ERP_FILES = [['재고전환_온오프','명동본점'],['재고전환_온오프','월드타워'],['양수도','명동본점'],['양수도','인천공항T1'],['양수도','인천공항T2'],['양수도','제주'],['양수도','제주공항'],['재고전환_오프온','월드타워']];
+const ANOMS = [
+ {no:'Q-01',kind:'과다 이동',to:'바이어 · 인천공항T1',who:'buyer',code:'2000000052',name:'가상브랜드C1 가상상품 4',detail:'인천공항T2 → 인천공항T1 42개 이동. 판매 18일치 (경고 기준 10일치)',q:'인천공항T1에 이 상품 42개가 필요합니까? 행사나 단체 예약 같은 사유가 있으면 적어 주세요.',opts:['정상','이동 제외'],adj:{move:-1}},
+ {no:'Q-02',kind:'이동 건수 이상',to:'프로그램 작성자',who:'author',code:'2000000003',name:'가상브랜드A1 가상상품 3',detail:'한 상품에 이동 지시 9건 (상품 평균 2.1건). 3개 이하 소량 이동이 6건',q:'소량 이동이 여러 번 생겼습니다. 최소 보충 수량을 3에서 5로 올려 다시 돌려 볼까요?',opts:['정상','파라미터 조정','로직 수정'],fix:{key:'hyst_min_qty',val:5,label:'최소 보충 수량 3 → 5'}},
+ {no:'Q-03',kind:'미충전',to:'바이어 · 제주',who:'buyer',code:'2000000101',name:'가상브랜드E1 가상상품 5',detail:'제주 부족분 24개. 같은 양수도 그룹 안에 내줄 재고가 없음',q:'부족분 24개를 발주로 채웁니까? 다른 방법이 필요하면 기타를 고르고 적어 주세요.',opts:['정상','기타']},
+ {no:'Q-04',kind:'전일 대비 급변',to:'바이어 · 월드타워',who:'buyer',code:'2000000066',name:'가상브랜드C3 가상상품 6',detail:'월드타워 → 온라인 전환 31개. 전일 0개',q:'온라인으로 31개를 전환해도 됩니까? 매장 행사 등으로 오프라인에 남겨야 하면 이동 제외를 골라 주세요.',opts:['정상','이동 제외'],adj:{conv:-1}},
+ {no:'Q-05',kind:'과다 이동',to:'바이어 · 제주공항',who:'buyer',code:'2000000079',name:'가상브랜드D1 가상상품 1',detail:'인천공항T1 → 제주공항 36개 이동. 판매 14일치 (경고 기준 10일치)',q:'제주공항에서 이 상품 36개를 받을 수 있습니까?',opts:['정상','이동 제외'],adj:{move:-1}},
+ {no:'Q-06',kind:'운영 버전과 차이',to:'프로그램 작성자',who:'author',code:'—',name:'전체',detail:'미충전 부족분 건수가 운영 버전과 다름',q:'수정한 의도와 맞는 변화입니까?',opts:['정상','로직 수정']}];
+const QCOLS = ['질문번호','받는 사람','상품코드','상품명','이상 내용','질문','답변 선택','답변 내용'];
+const PERM = {register:['user'],testrun:['user'],promote:['user'],decide:['it'],master:['md'],input:['sop'],prodrun:['sop'],approve:['sop'],download:['sop'],ask:['user'],retest:['user']};
+
+// ---------- 상태 ----------
+let S;
+function init(){
+  const p = {}; PARAMS.forEach(x=>p[x[0]]=x[2]);
+  S = {
+    page:'s1', role:'all', seq:3, viewRun:null,
+    versions:[{id:'V-001',name:'운영본 v0.3',memo:'현행 PC 운영 소스 (1,764줄)',kind:'prod',status:'운영',by:'S&OP 담당자',at:'2026-11-10 14:02',file:'pipeline_운영본_v0.3.py'}],
+    prodParams:p,
+    masters:[{kind:'양수도 그룹',ver:3,file:'브랜드양수도그룹관리_20261105.csv',by:'MD',at:'2026-11-05 16:40'},{kind:'제외·전용 SKU',ver:5,file:'양수도제외브랜드상품_20261109.xlsx',by:'MD',at:'2026-11-09 11:12'}],
+    inputs:{
+      '20261117':{state:'수집 중',note:'재고는 기간계 접근 승인 전이라 파일로 올립니다',continued:false,files:[
+        ['재고 스냅샷','','파일 필요','—','—','wait'],
+        ['판매예측','일예상판매수량_20261116.xlsx','자동 수집 (ADF)','11-16 06:10','1,005','ok'],
+        ['공헌이익','채널별상품공헌이익_202609.csv','올린 파일','10-02 09:30','1,440','warn'],
+        ['코드표 5종','점코드_ 외 4개','자동 수집 (ADF)','11-17 08:40','289','ok']]},
+      '20261116':{state:'준비됨',files:[]}, '20260812':{state:'준비됨',note:'회귀 기준 (전체 추출)',files:[]},
+      '20260813':{state:'준비됨',note:'부분 추출 사례',partial:true,files:[]}},
+    runs:[{id:'R-0002',mode:'운영',ver:'V-001',date:'20261116',params:{...p},by:'S&OP 담당자',at:'2026-11-16 09:02',dur:'6분 08초',status:'승인됨',counts:BASE['20261116'],rules:[0,0,0,0,0],approvedBy:'S&OP 담당자',approvedAt:'2026-11-16 09:31',masters:'그룹 v3 · 제외 v5'}],
+    promos:[], qsets:[], viewQ:null
+  };
+}
+const $ = s=>document.querySelector(s);
+const fileField = (id,accept)=>`<label class="file"><input type="file" id="${id}" accept="${accept}"><span class="btn">파일 선택</span><span class="fname" data-for="${id}">선택한 파일 없음</span></label>`;
+const fmt = n=>n.toLocaleString('ko-KR');
+const can = a=>S.role==='all'||PERM[a].includes(S.role);
+const dis = a=>can(a)?'':'disabled title="이 역할에는 권한이 없습니다"';
+const now = ()=>{const d=new Date();return '2026-11-17 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const ver = id=>S.versions.find(v=>v.id===id);
+const prodVer = ()=>S.versions.find(v=>v.status==='운영');
+const run = id=>S.runs.find(r=>r.id===id);
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2600)}
+function chip(st){const m={'운영':'ok','완료':'ok','승인됨':'ok','준비됨':'ok','통과':'ok','등록됨':'info','검증 중':'info','진행 중':'info','승인 대기':'warn','확인대기':'warn','경고':'warn','수집 중':'warn','보관':'mute','반려':'bad','입력실패':'bad','규칙위반':'bad','실행오류':'bad','실패':'bad','위반':'bad','확인 필요':'warn','작성됨':'mute','보냄':'info','답변됨':'ok','답변 대기':'warn','해소':'ok','확인됨':'ok','남음':'bad'};return `<span class="st c-${m[st]||'mute'}"><i></i>${st}</span>`}
+
+// ---------- 가상 결과 계산 ----------
+function calc(v, date, params, adj){
+  const b = BASE[date].slice();
+  const pp = S.prodParams;
+  let move=0, miss=0, order=0;
+  if(v.kind==='mod'){move+=9;miss-=14}
+  move += (pp.min_days-params.min_days)*6; miss -= (pp.min_days-params.min_days)*11;
+  move += (params.base_doi-pp.base_doi)*8; order += (params.base_doi-pp.base_doi)*40;
+  move += (pp.hyst_min_qty-params.hyst_min_qty)*5;
+  b[1]+=move+((adj&&adj.move)||0); b[2]+=(adj&&adj.conv)||0; b[3]+=miss; b[4]+=order;
+  return {counts:b, rules:[0,0,0,v.kind==='viol'?3:0,0]};
+}
+function changedSkus(a,b){
+  const n = Math.min(12, Math.abs(a.counts[1]-b.counts[1]) + Math.abs(a.counts[3]-b.counts[3])>0 ? 4+Math.abs(a.counts[1]-b.counts[1])%9 : 0);
+  return SKU_POOL.slice(0,n).map((s,i)=>({code:s[0],name:s[1],cat:s[2],route:ROUTES[i%ROUTES.length],before:[0,3,6,0,12,4,0,8,2,0,5,9][i],after:[4,0,9,6,12+3,0,7,8+4,0,3,5+2,6][i]}));
+}
+
+// ---------- 실행 ----------
+function startRun(o){
+  const id = 'R-'+String(++S.seq).padStart(4,'0');
+  const r = {id, mode:o.mode, ver:o.ver, date:o.date, params:{...o.params}, by:o.by, at:now(), status:'진행 중', stage:0,
+             masters:'그룹 v'+S.masters.filter(m=>m.kind==='양수도 그룹').length*1+2+' · 제외 v'+(S.masters.filter(m=>m.kind==='제외·전용 SKU').length+4), compare:o.compare||null, hidden:o.hidden, parent:o.parent||null, applied:o.applied||null, adj:o.adj||null};
+  r.masters = '그룹 v'+Math.max(...S.masters.filter(m=>m.kind==='양수도 그룹').map(m=>m.ver))+' · 제외 v'+Math.max(...S.masters.filter(m=>m.kind==='제외·전용 SKU').map(m=>m.ver));
+  S.runs.unshift(r);
+  step(r, o.skipWait);
+  return r;
+}
+function step(r, skipWait){
+  const inp = S.inputs[r.date];
+  const tick = (ms,fn)=>setTimeout(()=>{fn();render()}, ms);
+  r.stage=0;
+  tick(STAGE_MS[0], ()=>{ // 입력 검증
+    if(inp.partial){r.status='입력실패';r.fail='재고에 없는 카테고리: COS and PFM, FOOD';r.dur='0분 21초';return}
+    r.inputWarn = (r.date===TODAY)?'공헌이익 파일이 갱신 주기(35일)를 넘었습니다 (수집 10-02, 46일 경과)':null;
+    if(r.mode==='운영' && r.inputWarn && !skipWait){r.status='확인대기';return}
+    r.stage=1;
+    tick(STAGE_MS[1], ()=>{ r.stage=2; tick(STAGE_MS[2], ()=>{ r.stage=3; tick(STAGE_MS[3], ()=>{
+      const res = calc(ver(r.ver), r.date, r.params, r.adj);
+      r.counts=res.counts; r.rules=res.rules; r.dur = r.date==='20260812'?'6분 31초':'6분 12초';
+      r.status = res.rules.some(x=>x>0)?'규칙위반':'완료'; r.stage=4;
+    })})});
+  });
+}
+const qsetOf = id=>S.qsets.find(q=>q.run===id);
+function planOf(qs){
+  const p={fix:[],excl:[],ok:[],logic:[],other:[],none:[]};
+  ANOMS.forEach(a=>{const x=qs.ans[a.no]; if(!x)p.none.push(a); else if(x.choice==='파라미터 조정')p.fix.push(a); else if(x.choice==='이동 제외')p.excl.push(a); else if(x.choice==='정상')p.ok.push(a); else if(x.choice==='로직 수정')p.logic.push(a); else p.other.push(a)});
+  return p;
+}
+function anomState(r,a){ if(!r.applied) return '확인 필요'; const x=r.applied[a.no]; if(!x) return '남음'; return x.choice==='정상'?'확인됨':(x.choice==='이동 제외'||x.choice==='파라미터 조정')?'해소':'남음' }
+function planLines(p){
+  return [p.fix.length?`파라미터 변경 ${p.fix.length}건: ${p.fix.map(a=>a.fix.label).join(' · ')}`:null,
+    p.excl.length?`이번 재테스트에서 이동·전환을 뺄 상품 ${p.excl.length}건: ${p.excl.map(a=>a.code).join(' · ')}`:null,
+    p.ok.length?`사유가 확인되어 이상치에서 뺄 항목 ${p.ok.length}건: ${p.ok.map(a=>a.no).join(' · ')}`:null,
+    p.logic.length?`프로그램 수정이 필요한 항목 ${p.logic.length}건: ${p.logic.map(a=>a.no).join(' · ')} (S1에서 새 버전을 등록한 뒤 재테스트)`:null,
+    p.other.length?`기타 의견 ${p.other.length}건: ${p.other.map(a=>a.no).join(' · ')} (사람이 읽고 판단)`:null,
+    p.none.length?`아직 답변이 없는 항목 ${p.none.length}건: ${p.none.map(a=>a.no).join(' · ')}`:null].filter(Boolean);
+}
+function anomCard(r){
+  const qs=qsetOf(r.id); const re=!!r.applied;
+  const st=ANOMS.map(a=>anomState(r,a)); const left=st.filter(x=>x==='남음').length;
+  return `<div class="card"><h3>이상치 ${re?`<span class="note">재테스트 결과: 해소 ${st.filter(x=>x==='해소').length} · 확인됨 ${st.filter(x=>x==='확인됨').length} · 남음 ${left}</span>`:`${ANOMS.length}건 <span class="note">검토리포트의 경고와 운영 버전 대비 변화에서 뽑은 것 (목업 표본)</span>`}</h3>
+  <table><tr><th>종류</th><th>상품</th><th>내용</th><th>물어볼 사람</th><th>상태</th></tr>
+  ${ANOMS.map((a,i)=>`<tr><td>${a.kind}</td><td>${a.code}<br><span class="note">${a.name}</span></td><td>${a.detail}${re&&r.applied[a.no]?`<br><span class="note">답변: ${r.applied[a.no].choice} — ${r.applied[a.no].text||''}</span>`:''}</td><td>${a.to}</td><td>${chip(st[i])}</td></tr>`).join('')}</table>
+  ${re?(left?'<div class="msg warn">남은 이상치가 있습니다. 질문 목록을 다시 만들어 한 번 더 확인할 수 있습니다.</div>':'<div class="msg ok">이상치가 모두 해소되거나 사유가 확인되었습니다.</div>'):''}
+  <div class="row" style="margin-top:10px">${re&&!left?'':qs?`<button class="btn" data-openq="${r.id}">질문·답변 보기 (${Object.keys(qs.ans).length}/${ANOMS.length} 답변)</button>`:`<button class="btn pri" id="btnMakeQ" data-run="${r.id}" ${dis('ask')}>질문 목록 만들기</button><span class="note">이상치마다 물어볼 사람과 질문 문안을 자동으로 만듭니다.</span>`}</div></div>`;
+}
+function compareOf(r){ return r.compare ? run(r.compare) : null }
+
+// ---------- 화면 ----------
+const NAV = [['검증 실행',[['s1','S1','내 프로그램 버전'],['s2','S2','검증 실행'],['s3','S3','검증 결과'],['qa','Q','질문·답변'],['s4','S4','운영 반영 승인']]],
+             ['운영 실행',[['s5','S5','마스터 데이터'],['s6','S6','입력 상태'],['s7','S7','운영 실행·결과'],['s8','S8','결과 내려받기']]],
+             ['기록',[['hist','','실행 이력']]]];
+function renderNav(){
+  const pend = S.promos.filter(p=>p.status==='승인 대기').length;
+  const wait = S.qsets.filter(q=>q.state==='보냄').reduce((n,q)=>n+ANOMS.length-Object.keys(q.ans).length,0);
+  $('#nav').innerHTML = NAV.map(g=>`<h2>${g[0]}</h2>`+g[1].map(i=>`<button data-page="${i[0]}" class="${S.page===i[0]?'on':''}"><span class="n">${i[1]}</span>${i[2]}${i[0]==='s4'&&pend?`<span class="dot">${pend}</span>`:''}${i[0]==='qa'&&wait?`<span class="dot">${wait}</span>`:''}</button>`).join('')).join('');
+}
+function countsCards(r, base, ref='비교 대상'){
+  return `<div class="grid5">`+COUNT_LABELS.map((l,i)=>{
+    let d=''; if(base&&base.counts){const x=r.counts[i]-base.counts[i]; d = x===0?`<i class="same">${ref} 대비 차이 없음</i>`:`<i>${ref} 대비 <span class="${x>0?'up':'down'}">${x>0?'+':'−'}${fmt(Math.abs(x))}</span></i>`}
+    return `<div class="stat"><b>${fmt(r.counts[i])}</b><span>${l}</span>${d}</div>`}).join('')+`</div>`;
+}
+function rulesTable(r){
+  return `<table><tr><th>업무 규칙</th><th>결과</th><th class="num">위반 건수</th></tr>`+RULES.map((n,i)=>`<tr><td>${n}</td><td>${chip(r.rules[i]?'위반':'통과')}</td><td class="num">${r.rules[i]}</td></tr>`).join('')+`</table>`;
+}
+const STAGE_MS=[900,1800,800,500];
+function stepsBar(r){
+  const names=['입력 검증','프로그램 실행','규칙 5개 확인','기록 저장'];
+  return `<div class="steps">`+names.map((n,i)=>{
+    let c=''; if(r.status==='입력실패'&&i===0)c='fail'; else if(r.status==='확인대기'&&i===0)c='hold'; else if(i<r.stage)c='done'; else if(i===r.stage&&r.status==='진행 중')c='now';
+    return `<div class="${c}" style="--dur:${STAGE_MS[i]}ms">${i+1}. ${n}</div>`}).join('')+`</div>`;
+}
+function runHeader(r){
+  const v=ver(r.ver);
+  return `<table><tr><th>실행 ID</th><th>모드</th><th>프로그램 버전</th><th>입력 일자</th><th>마스터 버전</th><th>요청</th><th>소요</th><th>상태</th></tr>
+  <tr><td class="mono">${r.id}</td><td>${r.mode}</td><td>${v.name}</td><td>${r.date}</td><td>${r.masters}</td><td>${r.by}<br><span class="note">${r.at}</span></td><td>${r.dur||'—'}</td><td>${chip(r.status)}</td></tr></table>`;
+}
+function dl(name, test){
+  const body = (test?'검증 실행 결과 - ERP 업로드 금지\n':'')+'상품코드,재고년월,재고유형,B/L ID,수량\n2000000003,202604,1,BL123456,4\n';
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+body],{type:'text/csv'})); a.download=(test?'TEST_':'')+name+'.csv'; a.click();
+  toast((test?'TEST_':'')+name+' 내려받기 (목업에서는 CSV로 대신합니다)');
+}
+
+const P = {};
+P.s1 = ()=>`<h2>내 프로그램 버전</h2><p class="lead">고친 pipeline.py를 올려 버전으로 남깁니다. 올린 파일은 바꾸거나 지울 수 없습니다.</p>
+<div class="card"><h3>새 버전 등록</h3><div class="row">
+ <div class="field"><span>프로그램 파일 (pipeline.py)</span>${fileField("codeFile",".py")}</div>
+ <div class="field"><span>이름</span><input type="text" id="codeName" placeholder="예: 최소보충 수정본" style="width:200px"></div>
+ <div class="field"><span>메모</span><input type="text" id="codeMemo" placeholder="고친 내용" style="width:300px"></div>
+ <button class="btn pri" id="btnRegister" ${dis('register')}>등록</button></div>
+ <div id="regMsg"></div><p class="note">등록할 때 문법과 불러오는 라이브러리를 검사합니다.</p></div>
+<div class="card"><h3>버전 목록</h3><table><tr><th>버전</th><th>이름</th><th>메모</th><th>파일</th><th>등록</th><th>상태</th></tr>
+${S.versions.map(v=>`<tr><td class="mono">${v.id}</td><td>${v.name}</td><td>${v.memo}</td><td>${v.file}</td><td>${v.by}<br><span class="note">${v.at}</span></td><td>${chip(v.status)}</td></tr>`).join('')}</table></div>`;
+
+P.s2 = ()=>`<h2>검증 실행</h2><p class="lead">고친 프로그램을 과거 일자 데이터로 실행합니다. 여기서 바꾼 파라미터는 이 실행에만 적용되고 운영값은 변하지 않습니다.</p>
+<div class="card"><h3>실행 조건</h3><div class="row">
+ <div class="field"><span>프로그램 버전</span><select id="tVer">${S.versions.filter(v=>v.status!=='반려').map(v=>`<option value="${v.id}" ${v.status==='등록됨'?'selected':''}>${v.id} · ${v.name} (${v.status})</option>`).join('')}</select></div>
+ <div class="field"><span>입력 일자</span><select id="tDate">${Object.entries(S.inputs).filter(e=>e[1].state==='준비됨').map(e=>`<option value="${e[0]}">${e[0]}${e[1].note?' · '+e[1].note:''}</option>`).join('')}</select></div>
+ <div class="field"><span>비교 대상</span><select id="tCmp"><option>운영 버전 + 운영 파라미터 (같은 입력, 같은 날 실행)</option></select></div></div></div>
+<div class="card"><h3>파라미터</h3><div class="params">
+ ${PARAMS.map(p=>`<div class="field"><span>${p[1]} <span class="same">(운영값 ${S.prodParams[p[0]]}, 범위 ${p[3]}~${p[4]})</span></span><input type="number" id="p_${p[0]}" value="${S.prodParams[p[0]]}" min="${p[3]}" max="${p[4]}"></div>`).join('')}</div>
+ <p class="note">나머지 8개는 운영값 그대로: ${FIXED_PARAMS}</p>
+ <div id="paramMsg"></div>
+ <div class="row" style="margin-top:12px"><button class="btn pri" id="btnTestRun" ${dis('testrun')}>검증 실행</button></div></div>`;
+
+P.s3 = ()=>{
+  const list = S.runs.filter(r=>r.mode==='검증'&&!r.hidden);
+  const r = run(S.viewRun) && run(S.viewRun).mode==='검증' ? run(S.viewRun) : list[0];
+  if(!r) return `<h2>검증 결과</h2><p class="lead">아직 검증 실행이 없습니다. S2에서 실행하면 여기에 결과가 나옵니다.</p>`;
+  const c = compareOf(r), v = ver(r.ver);
+  let body = `<div class="card">${runHeader(r)}${stepsBar(r)}`;
+  if(r.status==='진행 중') body += `<p class="note">실행 중 · 실제로는 약 6분이 걸리며 목업에서는 줄여서 보여줍니다</p></div>`;
+  else if(r.status==='입력실패') body += `<div class="msg bad"><b>입력 검증에서 멈췄습니다.</b> ${r.fail}<br>프로그램은 실행되지 않았고 결과 파일은 만들어지지 않았습니다.</div></div>`;
+  else {
+    body += (r.inputWarn?`<div class="msg warn">입력 경고: ${r.inputWarn}. 검증 실행이므로 경고로만 기록하고 계속했습니다.</div>`:'')+`</div>`;
+    const diffs = c&&c.counts ? changedSkus(r,c) : [];
+    body += `<div class="card"><h3>요약 건수 <span class="note">비교 대상: ${c?ver(c.ver).name+' · '+c.id:'없음'}</span></h3>${countsCards(r,c)}
+      ${c&&c.counts&&diffs.length===0?'<div class="msg ok">비교 대상과 차이 없음</div>':''}</div>
+    <div class="two"><div class="card"><h3>업무 규칙 5개</h3>${rulesTable(r)}
+      ${r.status==='규칙위반'?'<div class="msg bad">규칙 위반이 있어 운영 반영을 요청할 수 없습니다.</div>':''}</div>
+    <div class="card"><h3>내려받기</h3><p class="note">검증 실행 결과는 파일 이름 앞에 TEST_가 붙고, 시트 첫 줄에 "검증 실행 결과 - ERP 업로드 금지"가 들어갑니다.</p>
+      <div class="row"><button class="btn" data-dl="양수도_명동본점_${r.date}" data-test="1">TEST_양수도_명동본점</button><button class="btn" data-dl="검토리포트_${r.date}" data-test="1">TEST_검토리포트</button></div>
+      <h3 style="margin-top:16px">운영 반영</h3>
+      ${v.status==='운영'?'<p class="note">이 버전은 이미 운영 버전입니다.</p>':v.status==='승인 대기'?'<div class="msg info">운영 반영을 요청했습니다. IT혁신팀의 승인을 기다립니다 (S4).</div>':
+        `<button class="btn pri" id="btnPromote" data-run="${r.id}" ${r.status!=='완료'?'disabled':dis('promote')}>운영 반영 요청</button><p class="note">요청하면 0812 기준 입력으로 회귀 테스트가 자동으로 돕니다.</p>`}</div></div>
+    ${r.parent?`<div class="card"><h3>재테스트 <span class="note">${r.parent}의 질문에 대한 답변을 반영했습니다</span></h3><ul class="plan">${planLines(planOf({ans:r.applied})).map(l=>`<li>${l}</li>`).join('')}</ul>
+      <p class="note">이동 제외는 이번 재테스트에만 적용됩니다. 계속 적용하려면 MD가 제외·전용 SKU 마스터에 반영해야 합니다 (S5). 파라미터 변경을 운영에 쓰려면 운영 파라미터 변경 승인이 필요합니다.</p></div>`:''}
+    ${anomCard(r)}
+    <div class="card"><h3>수량이 달라진 상품 <span class="note">비교 대상과 이동·전환 수량이 다른 상품 ${diffs.length}건 (목업 표본)</span></h3>
+      ${diffs.length?`<table><tr><th>상품코드</th><th>상품명</th><th>카테고리</th><th>경로</th><th class="num">비교 대상</th><th class="num">이번 실행</th><th class="num">차이</th></tr>`+diffs.map(d=>`<tr><td class="mono">${d.code}</td><td>${d.name}</td><td>${d.cat}</td><td>${d.route}</td><td class="num">${d.before}</td><td class="num">${d.after}</td><td class="num ${d.after>d.before?'up':'down'}">${d.after>d.before?'+':''}${d.after-d.before}</td></tr>`).join('')+`</table>`:'<p class="note">수량이 달라진 상품이 없습니다</p>'}</div>`;
+  }
+  return `<h2>검증 결과</h2><p class="lead">고친 프로그램의 결과가 운영 버전과 어디서 다른지 봅니다.</p>
+  ${list.length>1?`<div class="row" style="margin-bottom:12px"><div class="field"><span>실행 선택</span><select id="pickRun">${list.map(x=>`<option value="${x.id}" ${x.id===r.id?'selected':''}>${x.id} · ${ver(x.ver).name} · ${x.date} · ${x.status}</option>`).join('')}</select></div></div>`:''}${body}`;
+};
+
+P.qa = ()=>{
+  const qs = S.qsets.find(q=>q.run===S.viewQ) || S.qsets[0];
+  if(!qs) return `<h2>질문·답변</h2><p class="lead">검증 결과에 이상치가 있을 때, 프로그램 작성자와 점별 바이어에게 물어볼 질문 목록을 만들고 답변을 받아 재테스트에 반영합니다.</p>
+   <div class="card"><p class="note">아직 질문 목록이 없습니다. S3 검증 결과의 이상치 카드에서 [질문 목록 만들기]를 누르면 여기에 나옵니다.</p></div>`;
+  const r=run(qs.run), n=Object.keys(qs.ans).length, plan=planOf(qs), lines=planLines(plan);
+  const mine=a=>S.role==='all'||(S.role==='buyer'&&a.who==='buyer')||(S.role==='user'&&a.who==='author');
+  const people=[...new Set(ANOMS.map(a=>a.to))];
+  return `<h2>질문·답변</h2><p class="lead">이상치마다 물어볼 사람과 질문을 만들어 보내고, 답변을 받아 재테스트에 반영합니다.</p>
+  <div class="card"><h3>${r.id} · ${ver(r.ver).name} · 입력 ${r.date} ${chip(qs.state)} <span class="note">답변 ${n}/${ANOMS.length}</span></h3>
+   <div class="steps"><div class="done">1. 질문 목록 만들기</div><div class="${qs.state==='보냄'?'done':'now'}">2. 보내기</div><div class="${n===ANOMS.length?'done':qs.state==='보냄'?'now':''}">3. 답변 받기</div><div class="${qs.retest?'done':n===ANOMS.length?'now':''}">4. 답변 반영해 재테스트</div></div>
+   <p class="note">받는 사람 ${people.length}명: ${people.join(' · ')}${qs.sentAt?' · 보낸 시각 '+qs.sentAt:''}</p>
+   <div class="row"><button class="btn" id="btnQDown">질문 목록 내려받기 (CSV)</button>
+    <button class="btn pri" id="btnQSend" ${qs.state==='보냄'?'disabled':dis('ask')}>질문 보내기</button></div></div>
+  <div class="card"><h3>질문과 답변</h3>
+   <table><tr><th>번호</th><th>받는 사람</th><th>이상 내용</th><th>질문</th><th style="width:300px">답변</th><th>상태</th></tr>
+   ${ANOMS.map(a=>{const x=qs.ans[a.no]; const editable=qs.state==='보냄'&&!x&&mine(a);
+     return `<tr><td class="mono">${a.no}</td><td>${a.to}</td><td><b>${a.kind}</b> · ${a.code}<br><span class="note">${a.detail}</span></td><td>${a.q}</td>
+      <td>${x?`<b>${x.choice}</b><br>${x.text||''}<br><span class="note">${x.by} · ${x.at}</span>`:editable?`<select data-qa-choice="${a.no}"><option value="">선택</option>${a.opts.map(o=>`<option>${o}</option>`).join('')}</select><br><input type="text" data-qa-text="${a.no}" placeholder="사유 또는 요청" style="width:100%;margin-top:4px">`:'<span class="same">—</span>'}</td>
+      <td>${chip(x?'답변됨':qs.state==='보냄'?'답변 대기':'작성됨')}</td></tr>`}).join('')}</table>
+   ${qs.state==='보냄'?`<div class="row" style="margin-top:12px"><button class="btn" id="btnQSave">답변 저장</button>
+     <div class="field"><span>답변을 적은 질문 목록 파일</span>${fileField("qaFile",".csv")}</div><button class="btn" id="btnQUp">파일에서 답변 읽기</button></div><div id="qaMsg">${qs.msg||''}</div>`:'<p class="note">보낸 뒤에 답변을 받을 수 있습니다. 답변은 받는 사람이 이 화면에서 직접 적거나, 내려받은 질문 목록 파일에 적어 다시 올립니다.</p>'}</div>
+  ${n?`<div class="card"><h3>답변 반영 계획</h3><ul class="plan">${lines.map(l=>`<li>${l}</li>`).join('')}</ul>
+   <p class="note">답변 선택에 따라 반영 방식이 정해집니다: 정상 → 사유를 기록하고 이상치에서 제외 / 이동 제외 → 그 상품의 이동·전환을 빼고 실행 / 파라미터 조정 → 제안한 값으로 실행 / 로직 수정 → 새 프로그램 버전 필요.</p>
+   ${qs.retest?`<div class="msg ok">재테스트 ${qs.retest}를 실행했습니다. <button class="btn" data-openrun="${qs.retest}">결과 보기</button></div>`:
+     `<div class="row"><button class="btn pri" id="btnRetest" ${dis('retest')}>답변 반영해 재테스트</button>${plan.none.length?'<span class="note">답변이 없는 항목은 이상치로 남습니다.</span>':''}</div>`}</div>`:''}`;
+};
+
+P.s4 = ()=>`<h2>운영 반영 승인</h2><p class="lead">회귀 테스트 결과를 보고 새 버전을 운영에 쓸지 정합니다. 승인하면 다음 운영 실행부터 새 버전이 쓰입니다.</p>
+${S.promos.length?S.promos.map(p=>{const v=ver(p.ver), a=run(p.runNew), b=run(p.runProd); const done=a.counts&&b.counts;
+  return `<div class="card"><h3>${v.name} <span class="note">(${v.id}) · 요청 ${p.by} ${p.at}</span> ${chip(p.status)}</h3><p class="note">메모: ${v.memo}</p>
+  ${!done?'<p class="note">회귀 테스트 실행 중 · 0812 기준 입력으로 새 버전과 현재 운영 버전을 함께 돌립니다</p>':
+  `<div class="two"><div><h3>회귀 테스트 · 0812 기준 입력</h3><table><tr><th></th><th class="num">현재 운영 버전</th><th class="num">새 버전</th><th class="num">차이</th></tr>
+   ${COUNT_LABELS.map((l,i)=>`<tr><td>${l}</td><td class="num">${fmt(b.counts[i])}</td><td class="num">${fmt(a.counts[i])}</td><td class="num">${a.counts[i]-b.counts[i]===0?'<span class="same">0</span>':(a.counts[i]-b.counts[i]>0?'+':'')+fmt(a.counts[i]-b.counts[i])}</td></tr>`).join('')}</table></div>
+   <div><h3>새 버전의 업무 규칙</h3>${rulesTable(a)}</div></div>
+   ${p.status==='승인 대기'?`<div class="row" style="margin-top:12px"><div class="field"><span>의견</span><input type="text" id="opinion_${p.id}" style="width:320px" placeholder="반려할 때는 사유를 적습니다"></div>
+     <button class="btn pri" data-approve="${p.id}" ${a.status!=='완료'?'disabled':dis('decide')}>운영 반영 승인</button><button class="btn danger" data-reject="${p.id}" ${dis('decide')}>반려</button></div>`:
+     `<div class="msg ${p.status==='승인됨'?'ok':'bad'}">${p.status} · ${p.decidedBy} ${p.decidedAt}${p.opinion?' · '+p.opinion:''}</div>`}`}</div>`}).join(''):
+  '<div class="card"><p class="note">승인을 기다리는 요청이 없습니다. S3에서 [운영 반영 요청]을 하면 여기에 나옵니다.</p></div>'}
+<div class="card"><h3>운영 버전 이력</h3><table><tr><th>버전</th><th>이름</th><th>상태</th><th></th></tr>${S.versions.filter(v=>['운영','보관'].includes(v.status)).map(v=>`<tr><td class="mono">${v.id}</td><td>${v.name}</td><td>${chip(v.status)}</td><td>${v.status==='보관'?`<button class="btn" data-rollback="${v.id}" ${dis('decide')}>이 버전으로 되돌리기</button>`:''}</td></tr>`).join('')}</table></div>`;
+
+P.s5 = ()=>`<h2>마스터 데이터</h2><p class="lead">기간계에 없는 입력 2종(양수도 그룹, 제외·전용 SKU)을 MD가 엑셀로 올립니다. 올릴 때마다 새 버전으로 보관합니다.</p>
+<div class="card"><h3>올리기</h3><div class="row"><div class="field"><span>종류</span><select id="mKind"><option>제외·전용 SKU</option><option>양수도 그룹</option></select></div>
+ <div class="field"><span>파일</span>${fileField("mFile",".xlsx,.csv")}</div><button class="btn pri" id="btnMaster" ${dis('master')}>올리기</button></div><div id="mMsg"></div>
+ <p class="note">제외·전용 SKU 파일은 6개 시트(양수도제외브랜드, 양수도제외상품, 온라인전용SKU, 오프라인전용SKU, 온오프전환제외브랜드, 온오프전환제외상품)가 모두 있어야 합니다.</p></div>
+<div class="card"><h3>버전 목록</h3><table><tr><th>종류</th><th>버전</th><th>파일</th><th>올린 사람</th><th>일시</th></tr>
+${S.masters.slice().reverse().map(m=>`<tr><td>${m.kind}</td><td>v${m.ver}</td><td>${m.file}</td><td>${m.by}</td><td>${m.at}</td></tr>`).join('')}</table>
+<p class="note">다음 실행부터 종류별로 가장 최근 버전을 씁니다. 어떤 버전을 썼는지는 실행 기록에 남습니다.</p></div>`;
+
+P.s6 = ()=>{ const i=S.inputs[TODAY]; const w = S.runs.find(r=>r.mode==='운영'&&r.date===TODAY&&r.status==='확인대기');
+ return `<h2>입력 상태</h2><p class="lead">오늘(${TODAY}) 실행에 쓸 입력 묶음입니다. 온전하지 않으면 실행되지 않습니다.</p>
+<div class="card"><h3>오늘의 입력 묶음 ${chip(i.state)}</h3>
+ <table><tr><th>입력</th><th>파일</th><th>출처</th><th>수집 시각</th><th class="num">행 수</th><th>상태</th></tr>
+ ${i.files.map(f=>`<tr><td>${f[0]}</td><td>${f[1]||'—'}</td><td>${f[2]}</td><td>${f[3]}</td><td class="num">${f[4]}</td><td>${f[5]==='ok'?chip('통과'):f[5]==='warn'?chip('경고'):f[5]==='bad'?chip('실패'):'<span class="st c-mute"><i></i>대기</span>'}</td></tr>`).join('')}</table>
+ ${i.result||''}
+ <div class="msg warn">공헌이익 파일이 갱신 주기(35일)를 넘었습니다. 운영 실행은 담당자가 [실행 계속]을 눌러야 진행됩니다.</div>
+ ${w?`<div class="row"><button class="btn pri" id="btnContinue" data-run="${w.id}" ${dis('input')}>실행 계속 (${w.id})</button></div>`:''}</div>
+<div class="card"><h3>재고 파일 올리기</h3><p class="note">${i.note}. 올리면 실제로 파일을 읽어 컬럼 72개, 카테고리 6개, 점 10개를 확인합니다.</p>
+ <div class="row"><div class="field"><span>재고 합본 CSV</span>${fileField("invFile",".csv")}</div><button class="btn pri" id="btnInv" ${dis('input')}>올려서 확인</button>
+ <button class="btn" id="btnRecollect" ${dis('input')}>재수집 요청</button></div></div>`};
+
+P.s7 = ()=>{ const i=S.inputs[TODAY]; const list=S.runs.filter(r=>r.mode==='운영'&&r.date===TODAY); const r=list[0]; const prev=S.runs.find(x=>x.mode==='운영'&&x.date!==TODAY&&x.status==='승인됨'); const pv=prodVer();
+ let body='';
+ if(r){ body=`<div class="card">${runHeader(r)}${stepsBar(r)}`;
+  if(r.status==='확인대기') body+=`<div class="msg warn">입력 경고가 있어 멈췄습니다: ${r.inputWarn}<br>확인하고 계속하려면 아래 버튼을 누르세요.</div><button class="btn pri" id="btnContinue" data-run="${r.id}" ${dis('input')}>실행 계속</button></div>`;
+  else if(r.status==='진행 중') body+=`<p class="note">실행 중 · 실제로는 약 6분이 걸리며 목업에서는 줄여서 보여줍니다</p></div>`;
+  else { body+=`</div><div class="card"><h3>요약 건수 <span class="note">직전 운영 실행: ${prev.date}</span></h3>${countsCards(r,prev,'직전 운영')}</div>
+   <div class="two"><div class="card"><h3>업무 규칙 5개</h3>${rulesTable(r)}</div>
+   <div class="card"><h3>걸린 시간 <span class="note">(가상)</span></h3><table><tr><th>구간</th><th>시각</th><th class="num">소요</th></tr>
+    <tr><td>수집 시작</td><td>08:40</td><td class="num">—</td></tr><tr><td>입력 준비됨</td><td>08:47</td><td class="num">7분</td></tr><tr><td>실행 시작</td><td>08:48</td><td class="num">1분</td></tr><tr><td>실행 종료</td><td>08:54</td><td class="num">6분</td></tr>
+    <tr><td>승인</td><td>${r.status==='승인됨'?'09:05':'—'}</td><td class="num">${r.status==='승인됨'?'11분':'—'}</td></tr></table>
+    <p class="note">현행은 09:00에 시작해 10:30 안에 마칩니다.</p></div></div>
+   <div class="card"><h3>승인</h3>${r.status==='승인됨'?`<div class="msg ok">승인됨 · ${r.approvedBy} ${r.approvedAt}. S8에서 ERP 업로드 파일을 내려받을 수 있습니다.</div>`:
+    r.status==='규칙위반'?'<div class="msg bad">규칙 위반이 있어 승인할 수 없습니다.</div>':`<p class="note">결과를 확인했으면 승인합니다. 승인 전에는 ERP 업로드 파일을 내려받을 수 없습니다.</p><button class="btn pri" id="btnApprove" data-run="${r.id}" ${dis('approve')}>승인</button>`}</div>`}
+ }
+ return `<h2>운영 실행·결과</h2><p class="lead">승인된 운영 버전과 운영 파라미터로 오늘의 결과를 만듭니다.</p>
+ <div class="card"><h3>오늘 실행</h3><table><tr><th>운영 버전</th><th>운영 파라미터</th><th>입력 묶음 (${TODAY})</th></tr>
+  <tr><td>${pv.id} · ${pv.name}</td><td>기본커버 ${S.prodParams.base_doi} · 최소보장 ${S.prodParams.min_days} · 최소보충 ${S.prodParams.hyst_min_qty} 외 11개</td><td>${chip(i.state)}</td></tr></table>
+  ${i.state!=='준비됨'?'<div class="msg bad">입력 묶음이 준비되지 않아 실행할 수 없습니다. S6 입력 상태에서 재고 파일을 올리세요.</div>':''}
+  <div class="row" style="margin-top:10px"><button class="btn pri" id="btnProdRun" ${i.state!=='준비됨'?'disabled':dis('prodrun')}>지금 실행</button>
+  <span class="note">PoC에서는 수집이 끝난 뒤 자동으로 시작하는 것도 시연합니다.</span></div></div>${body}`};
+
+P.s8 = ()=>{ const r=S.runs.find(x=>x.mode==='운영'&&x.date===TODAY&&x.status==='승인됨');
+ return `<h2>결과 내려받기</h2><p class="lead">승인된 운영 결과의 ERP 업로드 파일입니다. 위에서부터 순서대로 ERP에 올립니다.</p>
+ ${r?`<div class="card"><h3>${r.id} · ${r.date} ${chip(r.status)}</h3><table><tr><th>순서</th><th>파일</th><th></th></tr>
+  ${ERP_FILES.map(f=>`<tr><td><span class="order">${f[0]==='재고전환_온오프'?1:f[0]==='양수도'?2:3}</span>${f[0]==='재고전환_온오프'?'온 → 오프':f[0]==='양수도'?'양수도':'오프 → 온'}</td><td>${f[0]}_${f[1]}_${r.date}.xlsx</td><td><button class="btn" data-dl="${f[0]}_${f[1]}_${r.date}" ${dis('download')}>내려받기</button></td></tr>`).join('')}</table>
+  <p class="note">리포트: 이동체인_${r.date}.xlsx · 검토리포트_${r.date}.xlsx · 일일결과리포트_${r.date}.html</p></div>`:
+  '<div class="card"><div class="msg warn">오늘 승인된 운영 실행이 없습니다. 승인 전에는 ERP 업로드 파일을 내려받을 수 없습니다 (S7).</div></div>'}`};
+
+P.hist = ()=>`<h2>실행 이력</h2><p class="lead">누가 언제 어떤 프로그램과 설정으로 실행했는지 남습니다. 지우는 기능은 없습니다.</p>
+<div class="card"><table><tr><th>실행 ID</th><th>일시</th><th>모드</th><th>실행자</th><th>프로그램 버전</th><th>입력 일자</th><th>마스터</th><th class="num">이동 지시</th><th>소요</th><th>상태</th></tr>
+${S.runs.map(r=>`<tr><td class="mono">${r.id}</td><td>${r.at}</td><td>${r.mode}</td><td>${r.by}</td><td>${ver(r.ver).name}</td><td>${r.date}</td><td>${r.masters}</td><td class="num">${r.counts?fmt(r.counts[1]):'—'}</td><td>${r.dur||'—'}</td><td>${chip(r.status)}</td></tr>`).join('')}</table></div>`;
+
+let lastPage=null, pendingRender=false;
+function render(){
+  if(document.body.classList.contains('busy')){pendingRender=true;return}
+  pendingRender=false; renderNav();
+  const m=$('#main'), y=window.scrollY; m.innerHTML = P[S.page]();
+  if(lastPage!==S.page){ m.classList.remove('enter'); void m.offsetWidth; m.classList.add('enter'); window.scrollTo(0,0) } else window.scrollTo(0,y);
+  lastPage=S.page;
+}
+const BUSY={btnRegister:700,btnTestRun:500,btnPromote:600,btnMaster:800,btnInv:900,btnRecollect:500,btnProdRun:500,btnContinue:400,btnApprove:600,btnMakeQ:900,btnQSend:800,btnQSave:400,btnQUp:700,btnRetest:500,btnQDown:300};
+function busy(btn, ms){
+  return new Promise(done=>{ document.body.style.setProperty('--busy',ms+'ms'); document.body.classList.add('busy'); btn.classList.add('loading');
+    setTimeout(()=>{ document.body.classList.remove('busy'); btn.classList.remove('loading'); done() }, ms) });
+}
+
+// ---------- 동작 ----------
+document.addEventListener('click', async e=>{
+  const t = e.target.closest('button'); if(!t) return;
+  if(t.dataset.page){S.page=t.dataset.page;render();return}
+  if(t.id==='reset'){init();$('#role').value='all';render();toast('처음 상태로 돌렸습니다');return}
+  if(t.disabled||document.body.classList.contains('busy')) return;
+  const wait = BUSY[t.id] || ((t.dataset.approve||t.dataset.reject||t.dataset.rollback)?600:(t.dataset.dl?300:0));
+  if(wait) await busy(t, wait);
+  if(t.dataset.dl){dl(t.dataset.dl, !!t.dataset.test);return}
+
+  if(t.id==='btnRegister'){
+    const f=$('#codeFile').files[0], name=$('#codeName').value.trim(), memo=$('#codeMemo').value.trim(), m=$('#regMsg');
+    if(!f){m.innerHTML='<div class="msg bad">파일을 고르세요.</div>';return}
+    if(f.name.includes('문법오류')){m.innerHTML='<div class="msg bad"><b>등록할 수 없습니다.</b> 문법 오류: 2번째 줄 <code>def allocate(:</code></div>';return}
+    if(f.name.includes('운영본')){m.innerHTML='<div class="msg info">내용이 같은 버전이 이미 있습니다: V-001 · 운영본 v0.3. 새 버전을 만들지 않았습니다.</div>';return}
+    const id='V-'+String(S.versions.length+1).padStart(3,'0');
+    S.versions.push({id,name:name||f.name.replace('.py',''),memo:memo||'—',kind:f.name.includes('규칙위반')?'viol':'mod',status:'등록됨',by:'현업 사용자',at:now(),file:f.name});
+    render(); $('#regMsg').innerHTML=`<div class="msg ok">${id}로 등록했습니다. S2에서 검증 실행을 할 수 있습니다.</div>`; return;
+  }
+  if(t.id==='btnTestRun'){
+    const params={...S.prodParams}; let bad=null;
+    PARAMS.forEach(p=>{const v=Number($('#p_'+p[0]).value); if(!(v>=p[3]&&v<=p[4])) bad=p; params[p[0]]=v});
+    if(bad){$('#paramMsg').innerHTML=`<div class="msg bad">${bad[1]}은(는) ${bad[3]}~${bad[4]} 사이여야 합니다.</div>`;return}
+    const vid=$('#tVer').value, date=$('#tDate').value, pv=prodVer();
+    let cmp=null;
+    if(!S.inputs[date].partial){ // 비교용: 운영 버전을 같은 입력으로 함께 실행
+      cmp = S.runs.find(r=>r.ver===pv.id&&r.date===date&&r.at.startsWith('2026-11-17')&&r.counts&&JSON.stringify(r.params)===JSON.stringify(S.prodParams))
+         || startRun({mode:'검증',ver:pv.id,date,params:S.prodParams,by:'시스템 (비교용)',hidden:true});
+    }
+    const r=startRun({mode:'검증',ver:vid,date,params,by:'현업 사용자',compare:cmp&&cmp.id});
+    if(ver(vid).status==='등록됨') ver(vid).status='검증 중';
+    S.viewRun=r.id; S.page='s3'; render(); return;
+  }
+  if(t.id==='btnPromote'){
+    const r=run(t.dataset.run), v=ver(r.ver), pv=prodVer();
+    const a=startRun({mode:'회귀',ver:v.id,date:'20260812',params:S.prodParams,by:'시스템 (회귀)'});
+    const b=startRun({mode:'회귀',ver:pv.id,date:'20260812',params:S.prodParams,by:'시스템 (회귀)'});
+    v.status='승인 대기';
+    S.promos.unshift({id:'P-'+(S.promos.length+1),ver:v.id,runNew:a.id,runProd:b.id,by:'현업 사용자',at:now(),status:'승인 대기'});
+    render(); toast('운영 반영을 요청했습니다. 회귀 테스트가 시작됩니다 (S4)'); return;
+  }
+  if(t.dataset.approve||t.dataset.reject){
+    const p=S.promos.find(x=>x.id===(t.dataset.approve||t.dataset.reject)), v=ver(p.ver), op=$('#opinion_'+p.id).value.trim();
+    if(t.dataset.reject&&!op){toast('반려 사유를 의견에 적어 주세요');return}
+    p.decidedBy='IT혁신팀'; p.decidedAt=now(); p.opinion=op;
+    if(t.dataset.approve){prodVer().status='보관'; v.status='운영'; p.status='승인됨'; toast(v.name+'이(가) 운영 버전이 되었습니다')}
+    else {v.status='반려'; p.status='반려'}
+    render(); return;
+  }
+  if(t.id==='btnMakeQ'){ S.qsets.unshift({run:t.dataset.run,state:'작성됨',ans:{}}); S.viewQ=t.dataset.run; S.page='qa'; render(); toast('이상치 '+ANOMS.length+'건으로 질문 목록을 만들었습니다'); return }
+  if(t.dataset.openq){ S.viewQ=t.dataset.openq; S.page='qa'; render(); return }
+  if(t.dataset.openrun){ S.viewRun=t.dataset.openrun; S.page='s3'; render(); return }
+  const QS = S.qsets.find(q=>q.run===S.viewQ) || S.qsets[0];
+  if(t.id==='btnQDown'){
+    const rows=[QCOLS].concat(ANOMS.map(a=>{const x=QS.ans[a.no]||{};return [a.no,a.to,a.code,a.name,a.kind+' - '+a.detail,a.q+' (선택: '+a.opts.join(' / ')+')',x.choice||'',x.text||'']}));
+    const el=document.createElement('a'); el.href=URL.createObjectURL(new Blob(['﻿'+rows.map(r=>r.join(',')).join('\n')+'\n'],{type:'text/csv'})); el.download='질문목록_'+QS.run+'.csv'; el.click();
+    toast('질문목록_'+QS.run+'.csv 내려받기. 답변 선택과 답변 내용 칸을 채워 다시 올릴 수 있습니다'); return;
+  }
+  if(t.id==='btnQSend'){ QS.state='보냄'; QS.sentAt=now(); render(); toast('받는 사람 5명에게 질문을 보냈습니다 (목업: 실제 발송 없음)'); return }
+  if(t.id==='btnQSave'){
+    let k=0; document.querySelectorAll('[data-qa-choice]').forEach(el=>{ if(el.value){ const no=el.dataset.qaChoice, a=ANOMS.find(x=>x.no===no);
+      QS.ans[no]={choice:el.value,text:document.querySelector(`[data-qa-text="${no}"]`).value.trim(),by:a.to,at:now()}; k++ }});
+    QS.msg = k?`<div class="msg ok">답변 ${k}건을 저장했습니다.</div>`:'<div class="msg warn">답변을 고른 항목이 없습니다.</div>'; render(); return;
+  }
+  if(t.id==='btnQUp'){
+    const f=$('#qaFile').files[0]; if(!f){toast('답변이 적힌 질문 목록 파일을 고르세요');return}
+    const lines=(await f.text()).replace(/^﻿/,'').split(/\r?\n/).filter(x=>x.length).slice(1); let ok=0; const bad=[];
+    lines.forEach(l=>{const c=l.split(','), a=ANOMS.find(x=>x.no===c[0]); if(!a){bad.push(c[0]+': 없는 질문번호');return}
+      if(!c[6]) return; if(!a.opts.includes(c[6])){bad.push(`${c[0]}: 답변 선택 "${c[6]}"은(는) 쓸 수 없습니다 (${a.opts.join(' / ')})`);return}
+      QS.ans[a.no]={choice:c[6],text:c[7]||'',by:a.to+' (파일)',at:now()}; ok++ });
+    QS.msg=`<div class="msg ${bad.length?'warn':'ok'}">${f.name}에서 답변 ${ok}건을 읽었습니다.${bad.length?'<br>읽지 못한 줄: '+bad.join(' · '):''}</div>`; render(); return;
+  }
+  if(t.id==='btnRetest'){
+    const o=run(QS.run), plan=planOf(QS), params={...o.params}, adj={move:0,conv:0};
+    plan.fix.forEach(a=>params[a.fix.key]=a.fix.val);
+    plan.excl.forEach(a=>{adj.move+=(a.adj&&a.adj.move)||0; adj.conv+=(a.adj&&a.adj.conv)||0});
+    const r=startRun({mode:'검증',ver:o.ver,date:o.date,params,by:'현업 사용자',compare:o.id,parent:o.id,applied:JSON.parse(JSON.stringify(QS.ans)),adj});
+    QS.retest=r.id; S.viewRun=r.id; S.page='s3'; render(); toast('답변을 반영해 재테스트를 시작했습니다'); return;
+  }
+  if(t.dataset.rollback){ const v=ver(t.dataset.rollback); prodVer().status='보관'; v.status='운영'; render(); toast(v.name+'(으)로 되돌렸습니다'); return }
+  if(t.id==='btnMaster'){
+    const f=$('#mFile').files[0], kind=$('#mKind').value, m=$('#mMsg');
+    if(!f){m.innerHTML='<div class="msg bad">파일을 고르세요.</div>';return}
+    if(f.name.includes('시트누락')){m.innerHTML='<div class="msg bad"><b>올릴 수 없습니다.</b> 빠진 시트: 온오프전환제외상품</div>';return}
+    const verNo=Math.max(...S.masters.filter(x=>x.kind===kind).map(x=>x.ver))+1;
+    S.masters.push({kind,ver:verNo,file:f.name,by:'MD',at:now()}); render(); $('#mMsg').innerHTML=`<div class="msg ok">${kind} v${verNo}로 보관했습니다. 이전 버전은 그대로 남아 있습니다.</div>`; return;
+  }
+  if(t.id==='btnInv'){
+    const f=$('#invFile').files[0], i=S.inputs[TODAY]; if(!f){toast('재고 합본 CSV를 고르세요');return}
+    const text=(await f.text()).replace(/^﻿/,''); const lines=text.split(/\r?\n/).filter(x=>x.length); const head=lines[0].split(',');
+    const cats=new Set(), stores=new Set(); for(let k=1;k<lines.length;k++){const c=lines[k].split(',');cats.add(c[12]);stores.add(c[2])}
+    const colBad=head.length!==72?`컬럼 수가 ${head.length}개입니다 (기준 72개)`:(()=>{const x=head.findIndex((h,k)=>h!==BASE_COLS[k]);return x<0?null:`${x}번 자리의 컬럼이 "${head[x]}"입니다 (기준 "${BASE_COLS[x]}")`})();
+    const mc=CATS.filter(c=>!cats.has(c)), ms=STORES.filter(s=>!stores.has(s));
+    const rows=[['재고 컬럼 72개의 이름과 순서',colBad],['카테고리 6개',mc.length?'빠진 카테고리: '+mc.join(', '):null],['점 10개',ms.length?'빠진 점: '+ms.join(', '):null]];
+    const fail=rows.some(r=>r[1]);
+    i.files[0]=['재고 스냅샷',f.name,'올린 파일',now().slice(5),fmt(lines.length-1),fail?'bad':'ok'];
+    i.state=fail?'실패':'준비됨';
+    i.result=`<table style="margin-top:10px"><tr><th>재고 파일 확인 항목</th><th>결과</th><th>내용</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${chip(r[1]?'실패':'통과')}</td><td>${r[1]||'—'}</td></tr>`).join('')}</table>`+
+      (fail?'<div class="msg bad"><b>이 입력으로는 실행되지 않습니다.</b> 빠진 항목을 채운 파일을 다시 올리세요.</div>':'<div class="msg ok">재고 파일이 온전합니다. 입력 묶음이 준비되었습니다.</div>');
+    render(); return;
+  }
+  if(t.id==='btnRecollect'){toast('재수집을 요청했습니다 (목업: 기간계 접근 승인 전이라 수집되지 않습니다)');return}
+  if(t.id==='btnProdRun'){ startRun({mode:'운영',ver:prodVer().id,date:TODAY,params:S.prodParams,by:'S&OP 담당자'}); render(); return }
+  if(t.id==='btnContinue'){ const r=run(t.dataset.run); r.status='진행 중'; r.continued=true; step(r,true); S.page='s7'; render(); return }
+  if(t.id==='btnApprove'){ const r=run(t.dataset.run); r.status='승인됨'; r.approvedBy='S&OP 담당자'; r.approvedAt=now(); render(); toast('승인했습니다. S8에서 ERP 업로드 파일을 내려받을 수 있습니다'); return }
+});
+document.addEventListener('change', e=>{
+  if(e.target.type==='file'){const n=document.querySelector(`.fname[data-for="${e.target.id}"]`); if(n){n.textContent=e.target.files[0]?e.target.files[0].name:'선택한 파일 없음'; n.classList.toggle('has',!!e.target.files[0])}}
+  if(e.target.id==='role'){S.role=e.target.value;render()}
+  if(e.target.id==='pickRun'){S.viewRun=e.target.value;render()}
+  if(e.target.id&&e.target.id.startsWith('p_')){const p=PARAMS.find(x=>'p_'+x[0]===e.target.id); e.target.classList.toggle('changed', Number(e.target.value)!==S.prodParams[p[0]])}
+});
+init(); render();
+</script>
+</body>
+</html>

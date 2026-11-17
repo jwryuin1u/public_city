@@ -1,12 +1,15 @@
 // 목업 시연 시나리오를 자동으로 조작하고 단계별 화면과 영상을 저장한다.
-// 실행: node operate.js
+// 실행: node operate.js        (index.html → walkthrough/)
+//       node operate.js v2     (index_v2.html → walkthrough_v2/)
 // 결과: walkthrough/NN_이름.png, walkthrough/demo.webm (전체), walkthrough/demo_질문답변.webm (질문·답변과 재테스트만)
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
 const ROOT = __dirname;
-const OUT = path.join(ROOT, 'walkthrough');
+const V2 = process.argv[2] === 'v2';
+const PAGE = V2 ? 'index_v2.html' : 'index.html';
+const OUT = path.join(ROOT, V2 ? 'walkthrough_v2' : 'walkthrough');
 // 파일은 내용을 읽어 넘긴다 (경로로 넘기면 일부 환경에서 선택되지 않는다)
 const D = (...p) => {
   const f = path.join(ROOT, 'dummy-data', ...p);
@@ -22,7 +25,13 @@ async function session(browser, videoName, body) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto('file://' + path.join(ROOT, 'index.html'));
+  await page.goto('file://' + path.join(ROOT, PAGE));
+  // 로딩 표시가 끝난 뒤에 다음 동작을 한다
+  page.idle = () => page.waitForFunction(() => !document.body.classList.contains('busy'));
+  for (const m of ['click', 'fill', 'selectOption', 'setInputFiles']) {
+    const orig = page[m].bind(page);
+    page[m] = async (...a) => { await page.idle(); return orig(...a); };
+  }
   await body(page);
   const video = page.video();
   await ctx.close();
@@ -90,6 +99,7 @@ async function questionLoop(page, shot) {
     const shot = async (name, caption) => {
       n += 1;
       const file = String(n).padStart(2, '0') + '_' + name + '.png';
+      await page.idle();
       await page.waitForTimeout(PAUSE);
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: path.join(OUT, file), fullPage: true });
@@ -176,7 +186,7 @@ async function questionLoop(page, shot) {
 
   // ===== 질문·답변과 재테스트만 담은 짧은 영상 =====
   const errors2 = await session(browser, 'demo_질문답변.webm', async (page) => {
-    const wait = async () => page.waitForTimeout(1400);
+    const wait = async () => { await page.idle(); await page.waitForTimeout(1400); };
     await wait();
     await registerAndRun(page, wait);
     await page.evaluate(() => document.querySelector('#btnMakeQ').scrollIntoView({ block: 'center' }));
