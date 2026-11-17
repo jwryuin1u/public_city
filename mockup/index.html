@@ -85,6 +85,7 @@ details summary{cursor:pointer;color:var(--sub);font-size:13px;margin-top:10px}
     <option value="sop">S&amp;OP 담당자</option>
     <option value="md">MD</option>
     <option value="it">IT혁신팀</option>
+    <option value="buyer">바이어 (점별 재고 신청자)</option>
   </select>
   <button class="btn" id="reset">처음 상태로</button>
 </header>
@@ -115,7 +116,15 @@ const SKU_POOL = [['2000000003','가상브랜드A1 가상상품 3','COS and PFM'
   ['2000000113','가상브랜드E3 가상상품 5','FOOD'],['2000000124','가상브랜드F1 가상상품 4','ELECTRONICS'],['2000000139','가상브랜드F3 가상상품 1','ELECTRONICS']];
 const ROUTES = ['인천공항T1 → 제주공항','월드타워 → 명동본점','명동본점 → 제주','인천공항T2 → 인천공항T1','부산 → 김해공항','월드타워 → 온라인'];
 const ERP_FILES = [['재고전환_온오프','명동본점'],['재고전환_온오프','월드타워'],['양수도','명동본점'],['양수도','인천공항T1'],['양수도','인천공항T2'],['양수도','제주'],['양수도','제주공항'],['재고전환_오프온','월드타워']];
-const PERM = {register:['user'],testrun:['user'],promote:['user'],decide:['it'],master:['md'],input:['sop'],prodrun:['sop'],approve:['sop'],download:['sop']};
+const ANOMS = [
+ {no:'Q-01',kind:'과다 이동',to:'바이어 · 인천공항T1',who:'buyer',code:'2000000052',name:'가상브랜드C1 가상상품 4',detail:'인천공항T2 → 인천공항T1 42개 이동. 판매 18일치 (경고 기준 10일치)',q:'인천공항T1에 이 상품 42개가 필요합니까? 행사나 단체 예약 같은 사유가 있으면 적어 주세요.',opts:['정상','이동 제외'],adj:{move:-1}},
+ {no:'Q-02',kind:'이동 건수 이상',to:'프로그램 작성자',who:'author',code:'2000000003',name:'가상브랜드A1 가상상품 3',detail:'한 상품에 이동 지시 9건 (상품 평균 2.1건). 3개 이하 소량 이동이 6건',q:'소량 이동이 여러 번 생겼습니다. 최소 보충 수량을 3에서 5로 올려 다시 돌려 볼까요?',opts:['정상','파라미터 조정','로직 수정'],fix:{key:'hyst_min_qty',val:5,label:'최소 보충 수량 3 → 5'}},
+ {no:'Q-03',kind:'미충전',to:'바이어 · 제주',who:'buyer',code:'2000000101',name:'가상브랜드E1 가상상품 5',detail:'제주 부족분 24개. 같은 양수도 그룹 안에 내줄 재고가 없음',q:'부족분 24개를 발주로 채웁니까? 다른 방법이 필요하면 기타를 고르고 적어 주세요.',opts:['정상','기타']},
+ {no:'Q-04',kind:'전일 대비 급변',to:'바이어 · 월드타워',who:'buyer',code:'2000000066',name:'가상브랜드C3 가상상품 6',detail:'월드타워 → 온라인 전환 31개. 전일 0개',q:'온라인으로 31개를 전환해도 됩니까? 매장 행사 등으로 오프라인에 남겨야 하면 이동 제외를 골라 주세요.',opts:['정상','이동 제외'],adj:{conv:-1}},
+ {no:'Q-05',kind:'과다 이동',to:'바이어 · 제주공항',who:'buyer',code:'2000000079',name:'가상브랜드D1 가상상품 1',detail:'인천공항T1 → 제주공항 36개 이동. 판매 14일치 (경고 기준 10일치)',q:'제주공항에서 이 상품 36개를 받을 수 있습니까?',opts:['정상','이동 제외'],adj:{move:-1}},
+ {no:'Q-06',kind:'운영 버전과 차이',to:'프로그램 작성자',who:'author',code:'—',name:'전체',detail:'미충전 부족분 건수가 운영 버전과 다름',q:'수정한 의도와 맞는 변화입니까?',opts:['정상','로직 수정']}];
+const QCOLS = ['질문번호','받는 사람','상품코드','상품명','이상 내용','질문','답변 선택','답변 내용'];
+const PERM = {register:['user'],testrun:['user'],promote:['user'],decide:['it'],master:['md'],input:['sop'],prodrun:['sop'],approve:['sop'],download:['sop'],ask:['user'],retest:['user']};
 
 // ---------- 상태 ----------
 let S;
@@ -135,7 +144,7 @@ function init(){
       '20261116':{state:'준비됨',files:[]}, '20260812':{state:'준비됨',note:'회귀 기준 (전체 추출)',files:[]},
       '20260813':{state:'준비됨',note:'부분 추출 사례',partial:true,files:[]}},
     runs:[{id:'R-0002',mode:'운영',ver:'V-001',date:'20261116',params:{...p},by:'S&OP 담당자',at:'2026-11-16 09:02',dur:'6분 08초',status:'승인됨',counts:BASE['20261116'],rules:[0,0,0,0,0],approvedBy:'S&OP 담당자',approvedAt:'2026-11-16 09:31',masters:'그룹 v3 · 제외 v5'}],
-    promos:[]
+    promos:[], qsets:[], viewQ:null
   };
 }
 const $ = s=>document.querySelector(s);
@@ -147,10 +156,10 @@ const ver = id=>S.versions.find(v=>v.id===id);
 const prodVer = ()=>S.versions.find(v=>v.status==='운영');
 const run = id=>S.runs.find(r=>r.id===id);
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2600)}
-function chip(st){const m={'운영':'ok','완료':'ok','승인됨':'ok','준비됨':'ok','통과':'ok','등록됨':'info','검증 중':'info','진행 중':'info','승인 대기':'warn','확인대기':'warn','경고':'warn','수집 중':'warn','보관':'mute','반려':'bad','입력실패':'bad','규칙위반':'bad','실행오류':'bad','실패':'bad','위반':'bad'};return `<span class="chip c-${m[st]||'mute'}">${st}</span>`}
+function chip(st){const m={'운영':'ok','완료':'ok','승인됨':'ok','준비됨':'ok','통과':'ok','등록됨':'info','검증 중':'info','진행 중':'info','승인 대기':'warn','확인대기':'warn','경고':'warn','수집 중':'warn','보관':'mute','반려':'bad','입력실패':'bad','규칙위반':'bad','실행오류':'bad','실패':'bad','위반':'bad','확인 필요':'warn','작성됨':'mute','보냄':'info','답변됨':'ok','답변 대기':'warn','해소':'ok','확인됨':'ok','남음':'bad'};return `<span class="chip c-${m[st]||'mute'}">${st}</span>`}
 
 // ---------- 가상 결과 계산 ----------
-function calc(v, date, params){
+function calc(v, date, params, adj){
   const b = BASE[date].slice();
   const pp = S.prodParams;
   let move=0, miss=0, order=0;
@@ -158,7 +167,7 @@ function calc(v, date, params){
   move += (pp.min_days-params.min_days)*6; miss -= (pp.min_days-params.min_days)*11;
   move += (params.base_doi-pp.base_doi)*8; order += (params.base_doi-pp.base_doi)*40;
   move += (pp.hyst_min_qty-params.hyst_min_qty)*5;
-  b[1]+=move; b[3]+=miss; b[4]+=order;
+  b[1]+=move+((adj&&adj.move)||0); b[2]+=(adj&&adj.conv)||0; b[3]+=miss; b[4]+=order;
   return {counts:b, rules:[0,0,0,v.kind==='viol'?3:0,0]};
 }
 function changedSkus(a,b){
@@ -170,7 +179,7 @@ function changedSkus(a,b){
 function startRun(o){
   const id = 'R-'+String(++S.seq).padStart(4,'0');
   const r = {id, mode:o.mode, ver:o.ver, date:o.date, params:{...o.params}, by:o.by, at:now(), status:'진행 중', stage:0,
-             masters:'그룹 v'+S.masters.filter(m=>m.kind==='양수도 그룹').length*1+2+' · 제외 v'+(S.masters.filter(m=>m.kind==='제외·전용 SKU').length+4), compare:o.compare||null, hidden:o.hidden};
+             masters:'그룹 v'+S.masters.filter(m=>m.kind==='양수도 그룹').length*1+2+' · 제외 v'+(S.masters.filter(m=>m.kind==='제외·전용 SKU').length+4), compare:o.compare||null, hidden:o.hidden, parent:o.parent||null, applied:o.applied||null, adj:o.adj||null};
   r.masters = '그룹 v'+Math.max(...S.masters.filter(m=>m.kind==='양수도 그룹').map(m=>m.ver))+' · 제외 v'+Math.max(...S.masters.filter(m=>m.kind==='제외·전용 SKU').map(m=>m.ver));
   S.runs.unshift(r);
   step(r, o.skipWait);
@@ -185,22 +194,47 @@ function step(r, skipWait){
     if(r.mode==='운영' && r.inputWarn && !skipWait){r.status='확인대기';r.stage=1;return}
     r.stage=1;
     tick(()=>{ r.stage=2; tick(()=>{ r.stage=3;
-      const res = calc(ver(r.ver), r.date, r.params);
+      const res = calc(ver(r.ver), r.date, r.params, r.adj);
       r.counts=res.counts; r.rules=res.rules; r.dur = r.date==='20260812'?'6분 31초':'6분 12초';
       r.status = res.rules.some(x=>x>0)?'규칙위반':'완료'; r.stage=4;
       if(r.onDone) r.onDone(r);
     })});
   });
 }
+const qsetOf = id=>S.qsets.find(q=>q.run===id);
+function planOf(qs){
+  const p={fix:[],excl:[],ok:[],logic:[],other:[],none:[]};
+  ANOMS.forEach(a=>{const x=qs.ans[a.no]; if(!x)p.none.push(a); else if(x.choice==='파라미터 조정')p.fix.push(a); else if(x.choice==='이동 제외')p.excl.push(a); else if(x.choice==='정상')p.ok.push(a); else if(x.choice==='로직 수정')p.logic.push(a); else p.other.push(a)});
+  return p;
+}
+function anomState(r,a){ if(!r.applied) return '확인 필요'; const x=r.applied[a.no]; if(!x) return '남음'; return x.choice==='정상'?'확인됨':(x.choice==='이동 제외'||x.choice==='파라미터 조정')?'해소':'남음' }
+function planLines(p){
+  return [p.fix.length?`파라미터 변경 ${p.fix.length}건: ${p.fix.map(a=>a.fix.label).join(' · ')}`:null,
+    p.excl.length?`이번 재테스트에서 이동·전환을 뺄 상품 ${p.excl.length}건: ${p.excl.map(a=>a.code).join(' · ')}`:null,
+    p.ok.length?`사유가 확인되어 이상치에서 뺄 항목 ${p.ok.length}건: ${p.ok.map(a=>a.no).join(' · ')}`:null,
+    p.logic.length?`프로그램 수정이 필요한 항목 ${p.logic.length}건: ${p.logic.map(a=>a.no).join(' · ')} (S1에서 새 버전을 등록한 뒤 재테스트)`:null,
+    p.other.length?`기타 의견 ${p.other.length}건: ${p.other.map(a=>a.no).join(' · ')} (사람이 읽고 판단)`:null,
+    p.none.length?`아직 답변이 없는 항목 ${p.none.length}건: ${p.none.map(a=>a.no).join(' · ')}`:null].filter(Boolean);
+}
+function anomCard(r){
+  const qs=qsetOf(r.id); const re=!!r.applied;
+  const st=ANOMS.map(a=>anomState(r,a)); const left=st.filter(x=>x==='남음').length;
+  return `<div class="card"><h3>이상치 ${re?`<span class="note">— 재테스트 결과: 해소 ${st.filter(x=>x==='해소').length} · 확인됨 ${st.filter(x=>x==='확인됨').length} · 남음 ${left}</span>`:`${ANOMS.length}건 <span class="note">— 검토리포트의 경고와 운영 버전 대비 변화에서 뽑은 것 (목업 표본)</span>`}</h3>
+  <table><tr><th>종류</th><th>상품</th><th>내용</th><th>물어볼 사람</th><th>상태</th></tr>
+  ${ANOMS.map((a,i)=>`<tr><td>${a.kind}</td><td>${a.code}<br><span class="note">${a.name}</span></td><td>${a.detail}${re&&r.applied[a.no]?`<br><span class="note">답변: ${r.applied[a.no].choice} — ${r.applied[a.no].text||''}</span>`:''}</td><td>${a.to}</td><td>${chip(st[i])}</td></tr>`).join('')}</table>
+  ${re?(left?'<div class="msg warn">남은 이상치가 있습니다. 질문 목록을 다시 만들어 한 번 더 확인할 수 있습니다.</div>':'<div class="msg ok">이상치가 모두 해소되거나 사유가 확인되었습니다.</div>'):''}
+  <div class="row" style="margin-top:10px">${re&&!left?'':qs?`<button class="btn" data-openq="${r.id}">질문·답변 보기 (${Object.keys(qs.ans).length}/${ANOMS.length} 답변)</button>`:`<button class="btn pri" id="btnMakeQ" data-run="${r.id}" ${dis('ask')}>질문 목록 만들기</button><span class="note">이상치마다 물어볼 사람과 질문 문안을 자동으로 만듭니다.</span>`}</div></div>`;
+}
 function compareOf(r){ return r.compare ? run(r.compare) : null }
 
 // ---------- 화면 ----------
-const NAV = [['검증 실행',[['s1','S1','내 프로그램 버전'],['s2','S2','검증 실행'],['s3','S3','검증 결과'],['s4','S4','운영 반영 승인']]],
+const NAV = [['검증 실행',[['s1','S1','내 프로그램 버전'],['s2','S2','검증 실행'],['s3','S3','검증 결과'],['qa','Q','질문·답변'],['s4','S4','운영 반영 승인']]],
              ['운영 실행',[['s5','S5','마스터 데이터'],['s6','S6','입력 상태'],['s7','S7','운영 실행·결과'],['s8','S8','결과 내려받기']]],
              ['기록',[['hist','','실행 이력']]]];
 function renderNav(){
   const pend = S.promos.filter(p=>p.status==='승인 대기').length;
-  $('#nav').innerHTML = NAV.map(g=>`<h2>${g[0]}</h2>`+g[1].map(i=>`<button data-page="${i[0]}" class="${S.page===i[0]?'on':''}"><span class="n">${i[1]}</span>${i[2]}${i[0]==='s4'&&pend?`<span class="dot">${pend}</span>`:''}</button>`).join('')).join('');
+  const wait = S.qsets.filter(q=>q.state==='보냄').reduce((n,q)=>n+ANOMS.length-Object.keys(q.ans).length,0);
+  $('#nav').innerHTML = NAV.map(g=>`<h2>${g[0]}</h2>`+g[1].map(i=>`<button data-page="${i[0]}" class="${S.page===i[0]?'on':''}"><span class="n">${i[1]}</span>${i[2]}${i[0]==='s4'&&pend?`<span class="dot">${pend}</span>`:''}${i[0]==='qa'&&wait?`<span class="dot">${wait}</span>`:''}</button>`).join('')).join('');
 }
 function countsCards(r, base){
   return `<div class="grid5">`+COUNT_LABELS.map((l,i)=>{
@@ -269,11 +303,41 @@ P.s3 = ()=>{
       <h3 style="margin-top:16px">운영 반영</h3>
       ${v.status==='운영'?'<p class="note">이 버전은 이미 운영 버전입니다.</p>':v.status==='승인 대기'?'<div class="msg info">운영 반영을 요청했습니다. IT혁신팀의 승인을 기다립니다 (S4).</div>':
         `<button class="btn pri" id="btnPromote" data-run="${r.id}" ${r.status!=='완료'?'disabled':dis('promote')}>운영 반영 요청</button><p class="note">요청하면 0812 기준 입력으로 회귀 테스트가 자동으로 돕니다.</p>`}</div></div>
+    ${r.parent?`<div class="card"><h3>재테스트 <span class="note">— ${r.parent}의 질문에 대한 답변을 반영했습니다</span></h3><ul style="margin:0;padding-left:18px">${planLines(planOf({ans:r.applied})).map(l=>`<li>${l}</li>`).join('')}</ul>
+      <p class="note">이동 제외는 이번 재테스트에만 적용됩니다. 계속 적용하려면 MD가 제외·전용 SKU 마스터에 반영해야 합니다 (S5). 파라미터 변경을 운영에 쓰려면 운영 파라미터 변경 승인이 필요합니다.</p></div>`:''}
+    ${anomCard(r)}
     <div class="card"><h3>달라진 SKU <span class="note">— 이동·전환 수량이 비교 대상과 다른 상품 ${diffs.length}건 (목업 표본)</span></h3>
       ${diffs.length?`<table><tr><th>상품코드</th><th>상품명</th><th>카테고리</th><th>경로</th><th class="num">비교 대상</th><th class="num">이번 실행</th><th class="num">차이</th></tr>`+diffs.map(d=>`<tr><td>${d.code}</td><td>${d.name}</td><td>${d.cat}</td><td>${d.route}</td><td class="num">${d.before}</td><td class="num">${d.after}</td><td class="num ${d.after>d.before?'up':'down'}">${d.after>d.before?'+':''}${d.after-d.before}</td></tr>`).join('')+`</table>`:'<p class="note">달라진 상품이 없습니다.</p>'}</div>`;
   }
   return `<h2>검증 결과</h2><p class="lead">고친 프로그램의 결과가 운영 버전과 어디서 다른지 봅니다.</p>
   ${list.length>1?`<div class="row" style="margin-bottom:12px"><div class="field"><span>실행 선택</span><select id="pickRun">${list.map(x=>`<option value="${x.id}" ${x.id===r.id?'selected':''}>${x.id} · ${ver(x.ver).name} · ${x.date} · ${x.status}</option>`).join('')}</select></div></div>`:''}${body}`;
+};
+
+P.qa = ()=>{
+  const qs = S.qsets.find(q=>q.run===S.viewQ) || S.qsets[0];
+  if(!qs) return `<h2>질문·답변</h2><p class="lead">검증 결과에 이상치가 있을 때, 프로그램 작성자와 점별 바이어에게 물어볼 질문 목록을 만들고 답변을 받아 재테스트에 반영합니다.</p>
+   <div class="card"><p class="note">아직 질문 목록이 없습니다. S3 검증 결과의 이상치 카드에서 [질문 목록 만들기]를 누르면 여기에 나옵니다.</p></div>`;
+  const r=run(qs.run), n=Object.keys(qs.ans).length, plan=planOf(qs), lines=planLines(plan);
+  const mine=a=>S.role==='all'||(S.role==='buyer'&&a.who==='buyer')||(S.role==='user'&&a.who==='author');
+  const people=[...new Set(ANOMS.map(a=>a.to))];
+  return `<h2>질문·답변</h2><p class="lead">이상치마다 물어볼 사람과 질문을 만들어 보내고, 답변을 받아 재테스트에 반영합니다.</p>
+  <div class="card"><h3>${r.id} · ${ver(r.ver).name} · 입력 ${r.date} ${chip(qs.state)} <span class="note">답변 ${n}/${ANOMS.length}</span></h3>
+   <div class="steps"><div class="done">1. 질문 목록 만들기</div><div class="${qs.state==='보냄'?'done':'now'}">2. 보내기</div><div class="${n===ANOMS.length?'done':qs.state==='보냄'?'now':''}">3. 답변 받기</div><div class="${qs.retest?'done':n?'now':''}">4. 답변 반영해 재테스트</div></div>
+   <p class="note">받는 사람 ${people.length}명: ${people.join(' · ')}${qs.sentAt?' · 보낸 시각 '+qs.sentAt:''}</p>
+   <div class="row"><button class="btn" id="btnQDown">질문 목록 내려받기 (CSV)</button>
+    <button class="btn pri" id="btnQSend" ${qs.state==='보냄'?'disabled':dis('ask')}>받는 사람에게 보내기</button></div></div>
+  <div class="card"><h3>질문과 답변</h3>
+   <table><tr><th>번호</th><th>받는 사람</th><th>이상 내용</th><th>질문</th><th style="width:300px">답변</th><th>상태</th></tr>
+   ${ANOMS.map(a=>{const x=qs.ans[a.no]; const editable=qs.state==='보냄'&&!x&&mine(a);
+     return `<tr><td>${a.no}</td><td>${a.to}</td><td><b>${a.kind}</b> · ${a.code}<br><span class="note">${a.detail}</span></td><td>${a.q}</td>
+      <td>${x?`<b>${x.choice}</b><br>${x.text||''}<br><span class="note">${x.by} · ${x.at}</span>`:editable?`<select data-qa-choice="${a.no}"><option value="">고르기</option>${a.opts.map(o=>`<option>${o}</option>`).join('')}</select><br><input type="text" data-qa-text="${a.no}" placeholder="사유나 요청" style="width:100%;margin-top:4px">`:'<span class="same">—</span>'}</td>
+      <td>${chip(x?'답변됨':qs.state==='보냄'?'답변 대기':'작성됨')}</td></tr>`}).join('')}</table>
+   ${qs.state==='보냄'?`<div class="row" style="margin-top:12px"><button class="btn" id="btnQSave">화면에 입력한 답변 저장</button>
+     <div class="field"><span>또는 답변이 적힌 질문 목록 파일 올리기</span><input type="file" id="qaFile" accept=".csv"></div><button class="btn" id="btnQUp">답변 파일 읽기</button></div><div id="qaMsg">${qs.msg||''}</div>`:'<p class="note">보낸 뒤에 답변을 받을 수 있습니다. 답변은 받는 사람이 이 화면에서 직접 적거나, 내려받은 질문 목록 파일에 적어 다시 올립니다.</p>'}</div>
+  ${n?`<div class="card"><h3>답변 반영 계획</h3><ul style="margin:0 0 10px;padding-left:18px">${lines.map(l=>`<li>${l}</li>`).join('')}</ul>
+   <p class="note">답변 선택에 따라 반영 방식이 정해집니다: 정상 → 사유를 기록하고 이상치에서 제외 / 이동 제외 → 그 상품의 이동·전환을 빼고 실행 / 파라미터 조정 → 제안한 값으로 실행 / 로직 수정 → 새 프로그램 버전 필요.</p>
+   ${qs.retest?`<div class="msg ok">재테스트 ${qs.retest}를 실행했습니다. <button class="btn" data-openrun="${qs.retest}">결과 보기</button></div>`:
+     `<div class="row"><button class="btn pri" id="btnRetest" ${dis('retest')}>답변 반영해 재테스트</button>${plan.none.length?'<span class="note">답변이 없는 항목은 이상치로 남습니다.</span>':''}</div>`}</div>`:''}`;
 };
 
 P.s4 = ()=>`<h2>운영 반영 승인</h2><p class="lead">회귀 테스트 결과를 보고 새 버전을 운영에 쓸지 정합니다. 승인하면 다음 운영 실행부터 새 버전이 쓰입니다.</p>
@@ -388,6 +452,36 @@ document.addEventListener('click', async e=>{
     if(t.dataset.approve){prodVer().status='보관'; v.status='운영'; p.status='승인됨'; toast(v.name+'이(가) 운영 버전이 되었습니다')}
     else {v.status='반려'; p.status='반려'}
     render(); return;
+  }
+  if(t.id==='btnMakeQ'){ S.qsets.unshift({run:t.dataset.run,state:'작성됨',ans:{}}); S.viewQ=t.dataset.run; S.page='qa'; render(); toast('이상치 '+ANOMS.length+'건으로 질문 목록을 만들었습니다'); return }
+  if(t.dataset.openq){ S.viewQ=t.dataset.openq; S.page='qa'; render(); return }
+  if(t.dataset.openrun){ S.viewRun=t.dataset.openrun; S.page='s3'; render(); return }
+  const QS = S.qsets.find(q=>q.run===S.viewQ) || S.qsets[0];
+  if(t.id==='btnQDown'){
+    const rows=[QCOLS].concat(ANOMS.map(a=>{const x=QS.ans[a.no]||{};return [a.no,a.to,a.code,a.name,a.kind+' - '+a.detail,a.q+' (선택: '+a.opts.join(' / ')+')',x.choice||'',x.text||'']}));
+    const el=document.createElement('a'); el.href=URL.createObjectURL(new Blob(['﻿'+rows.map(r=>r.join(',')).join('\n')+'\n'],{type:'text/csv'})); el.download='질문목록_'+QS.run+'.csv'; el.click();
+    toast('질문목록_'+QS.run+'.csv 내려받기. 답변 선택과 답변 내용 칸을 채워 다시 올릴 수 있습니다'); return;
+  }
+  if(t.id==='btnQSend'){ QS.state='보냄'; QS.sentAt=now(); render(); toast('받는 사람 5명에게 질문을 보냈습니다 (목업: 실제 발송 없음)'); return }
+  if(t.id==='btnQSave'){
+    let k=0; document.querySelectorAll('[data-qa-choice]').forEach(el=>{ if(el.value){ const no=el.dataset.qaChoice, a=ANOMS.find(x=>x.no===no);
+      QS.ans[no]={choice:el.value,text:document.querySelector(`[data-qa-text="${no}"]`).value.trim(),by:a.to,at:now()}; k++ }});
+    QS.msg = k?`<div class="msg ok">답변 ${k}건을 저장했습니다.</div>`:'<div class="msg warn">답변을 고른 항목이 없습니다.</div>'; render(); return;
+  }
+  if(t.id==='btnQUp'){
+    const f=$('#qaFile').files[0]; if(!f){toast('답변이 적힌 질문 목록 파일을 고르세요');return}
+    const lines=(await f.text()).replace(/^﻿/,'').split(/\r?\n/).filter(x=>x.length).slice(1); let ok=0; const bad=[];
+    lines.forEach(l=>{const c=l.split(','), a=ANOMS.find(x=>x.no===c[0]); if(!a){bad.push(c[0]+': 없는 질문번호');return}
+      if(!c[6]) return; if(!a.opts.includes(c[6])){bad.push(`${c[0]}: 답변 선택 "${c[6]}"은(는) 쓸 수 없습니다 (${a.opts.join(' / ')})`);return}
+      QS.ans[a.no]={choice:c[6],text:c[7]||'',by:a.to+' (파일)',at:now()}; ok++ });
+    QS.msg=`<div class="msg ${bad.length?'warn':'ok'}">${f.name}에서 답변 ${ok}건을 읽었습니다.${bad.length?'<br>읽지 못한 줄: '+bad.join(' · '):''}</div>`; render(); return;
+  }
+  if(t.id==='btnRetest'){
+    const o=run(QS.run), plan=planOf(QS), params={...o.params}, adj={move:0,conv:0};
+    plan.fix.forEach(a=>params[a.fix.key]=a.fix.val);
+    plan.excl.forEach(a=>{adj.move+=(a.adj&&a.adj.move)||0; adj.conv+=(a.adj&&a.adj.conv)||0});
+    const r=startRun({mode:'검증',ver:o.ver,date:o.date,params,by:'현업 사용자',compare:o.id,parent:o.id,applied:JSON.parse(JSON.stringify(QS.ans)),adj});
+    QS.retest=r.id; S.viewRun=r.id; S.page='s3'; render(); toast('답변을 반영해 재테스트를 시작했습니다'); return;
   }
   if(t.dataset.rollback){ const v=ver(t.dataset.rollback); prodVer().status='보관'; v.status='운영'; render(); toast(v.name+'(으)로 되돌렸습니다'); return }
   if(t.id==='btnMaster'){
