@@ -62,6 +62,8 @@ async function session(browser, videoName, body) {
     if (!SLOW) return raw.fill(sel, text);
     await moveTo(sel);
     await raw.click(sel);
+    const fb = await page.locator(sel).first().boundingBox(); // 커서가 글자를 가리지 않게 입력란 아래로 비킨다
+    if (fb) await page.mouse.move(fb.x + fb.width / 2 + 24, fb.y + fb.height + 14, { steps: 8 });
     await page.keyboard.press('Control+A');
     await page.locator(sel).pressSequentially(text, { delay: 85 });
     await page.waitForTimeout(400);
