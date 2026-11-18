@@ -138,7 +138,7 @@ def build_pdf():
                 + "".join("<tr>" + "".join(f"<td>{e(c)}</td>" for c in r) + "</tr>" for r in rows) + "</table>")
 
     B = [f"<h1>{e(TITLE)}</h1>", "<ul class=intro>" + "".join(f"<li>{e(x)}</li>" for x in INTRO) + "</ul>",
-         "<h2>화면 구성</h2>", table(["구분", "화면", "사용자", "주요 기능"], SCREENS), "<h2 class=flow>화면 흐름</h2>"]
+         "<h2>화면 흐름</h2>"]  # 화면 구성 표는 PDF에 넣지 않는다 (md에만 있다)
     n = 0
     for sec, steps in FLOW:
         B.append(f"<h3>{e(sec)}</h3>")
