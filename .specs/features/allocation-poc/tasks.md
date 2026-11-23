@@ -13,6 +13,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 **Design**: `.specs/features/allocation-poc/design.md`
 **Status**: Approved
 **Approved**: 2026-11-17 - user: "승인할게. 다음 작업 이어서 진행해줘"
+**Revised**: 2026-11-23 - user: "모두 너에게 맡길게. 가장 최적의 방안을 검토해서 작업 진행해줘" — 고객 자료 수령 반영 (기준 입력, 대상 카테고리, 파라미터 16개, 공헌이익 선택 입력). 근거는 `docs/reproduction-report.md`
 **Build**: `ruff check .; ruff format --check .; az bicep build --file infra/main.bicep`
 **Run unit**: `pytest tests/unit -v`
 **Run api**: `pytest tests/api -v`
@@ -31,10 +32,10 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 | Code Layer | Required Test Type | Coverage Expectation | Location Pattern | Run Command |
 | --- | --- | --- | --- | --- |
 | 실행 틀 (`runner/*.py`): 입력 검증, 업무 규칙, 실행, 기록 | unit | 수용 기준과 1:1, 예외 상황 전부 | `tests/unit/test_*.py` | `pytest tests/unit -v` |
-| 입력 구성 (`prep/*.py`) | unit | 수용 기준과 1:1, 0812 표본 대조 | `tests/unit/test_*.py` | `pytest tests/unit -v` |
+| 입력 구성 (`prep/*.py`) | unit | 수용 기준과 1:1, 기준 입력 표본 대조 | `tests/unit/test_*.py` | `pytest tests/unit -v` |
 | 프로그램 등록 검사 (`api/services/code_check.py`) | unit | 수용 기준과 1:1 | `tests/unit/test_code_check.py` | `pytest tests/unit -v` |
 | 관리 API 서비스·경로·화면 (`api/services`, `api/routes`, `api/auth.py`, `api/templates`) | integration | 경로마다 정상, 예외, 거절. 시험용 DB와 가짜 저장소·실행기 사용 | `tests/api/test_*.py` | `pytest tests/api -v` |
-| Azure 호출과 정의 (`api/clients`, `infra/*.bicep` 중 권한·네트워크·실행기·웹 앱·전체 배포, `adf/`) | integration | 배포된 PoC 환경에서 격리, 동시 실행, 로그인, 수집, 0812 일치 | `tests/azure/test_*.py` | `pytest tests/azure -v` |
+| Azure 호출과 정의 (`api/clients`, `infra/*.bicep` 중 권한·네트워크·실행기·웹 앱·전체 배포, `adf/`) | integration | 배포된 PoC 환경에서 격리, 동시 실행, 로그인, 수집, 기준 입력 일치 | `tests/azure/test_*.py` | `pytest tests/azure -v` |
 | 설정·정의만 있는 파일 (`pyproject.toml`, 기준 데이터 목록, 기준 컬럼, 보고서, `api/repo`, `api/app.py`, 저장소·DB·Data Factory·Logic Apps 정의) | none | - (build gate only) | - | build gate only |
 
 ## Gate Check Commands
@@ -200,15 +201,15 @@ T77 → T78
 
 #### T2: 기준 데이터 목록
 
-**What**: 고객이 준 0812·0813 입력과 현행 PC 결과 파일의 이름·행 수·내용 지문 목록을 만든다
+**What**: 고객이 준 기준 입력과 현행 PC 결과 파일의 이름·행 수·내용 지문 목록을 만든다
 **Where**: `tests/fixtures/baseline_manifest.json`
 **Depends on**: T1
-**Reuses**: 고객 제공 0812·0813 폴더
+**Reuses**: 고객 제공 기준 입력·결과 폴더 (후보 2026-11-18)
 **Requirement**: RUN-01
 
 **Done when**:
 
-- [ ] 0812 입력 10종과 결과 파일 전부, 0813 입력이 목록에 있다
+- [ ] 기준 입력 9종과 PC 결과 파일 전부, 카테고리를 뺀 시험 입력이 목록에 있다
 - [ ] 실데이터는 저장소에 넣지 않고 위치만 적는다
 - [ ] Gate check passes: `ruff check .; ruff format --check .; az bicep build --file infra/main.bicep; pytest tests -v`
 
@@ -219,7 +220,7 @@ T77 → T78
 
 #### T3: 현행 재현 확인 보고서
 
-**What**: 현행 pipeline.py를 0812 입력으로 로컬에서 실행해 설계의 가정 6개를 확인하고 결과를 적는다
+**What**: 현행 pipeline.py를 기준 입력으로 실행해 설계의 가정 6개를 확인하고 결과를 적는다 (2026-11-23 1차 작성. Linux와 PC 결과 일치만 미확인)
 **Where**: `docs/reproduction-report.md`
 **Depends on**: T2
 **Reuses**: 고객 제공 pipeline.py, settings.json, CLAUDE.md
@@ -227,7 +228,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 가정 6개(경로만 바꿔 실행됨, settings.json 주입, 날짜 고정 가능 여부, 두 번 실행한 결과가 같음, Linux 결과가 같음, 현행 결과가 규칙 5개를 통과함)마다 확인 결과와 근거가 있다
+- [ ] 가정 6개(경로만 바꿔 실행됨, settings.json 주입, 날짜 고정 가능 여부, 두 번 실행한 결과가 같음, Linux 결과가 같음, 현행 결과가 규칙 5개를 통과함)마다 확인 결과와 근거가 있다 (5개 작성됨. Linux 결과 일치는 PC 결과 수령 후)
 - [ ] 확인되지 않은 가정마다 설계에 주는 영향과 대응이 적혀 있다
 - [ ] 전체 추출 입력의 실행 시간과 메모리 사용량이 적혀 있다
 - [ ] Gate check passes: `ruff check .; ruff format --check .; az bicep build --file infra/main.bicep; pytest tests -v`
@@ -327,7 +328,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 실행 시점의 파라미터 14개 값 전체가 실행 기록에 사본으로 남는다 (C28)
+- [ ] 실행 시점의 파라미터 16개 값 전체가 실행 기록에 사본으로 남는다 (C28)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_settings_file.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
 
@@ -382,15 +383,15 @@ T77 → T78
 
 #### T11: 재고 기준 컬럼 등록
 
-**What**: 0812 합본 CSV의 72개 컬럼 이름을 순서대로 기준으로 등록한다
+**What**: 기준 입력 합본 CSV의 72개 컬럼 이름을 순서대로 기준으로 등록한다
 **Where**: `runner/baseline_columns.json`
 **Depends on**: None
-**Reuses**: 0812 합본 CSV의 헤더
+**Reuses**: 기준 입력 합본 CSV의 헤더
 **Requirement**: VAL-01
 
 **Done when**:
 
-- [ ] 72개 컬럼 이름이 0812 합본 CSV와 같은 순서로 들어 있다
+- [ ] 72개 컬럼 이름이 기준 입력 합본 CSV와 같은 순서로 들어 있다
 - [ ] Gate check passes: `ruff check .; ruff format --check .; az bicep build --file infra/main.bicep; pytest tests -v`
 
 **Tests**: none
@@ -439,7 +440,7 @@ T77 → T78
 
 #### T14: 입력 검증: 카테고리와 점
 
-**What**: 재고에 6개 카테고리와 10개 점이 모두 있는지 확인한다
+**What**: 재고에 등록된 대상 카테고리와 10개 점이 모두 있는지 확인한다
 **Where**: `runner/input_checks.py` (수정)
 **Depends on**: T13
 **Reuses**: 없음
@@ -447,7 +448,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 6개 카테고리 중 없는 것이 있으면 `입력실패`이고 빠진 카테고리 이름이 남는다 (0813 입력: COS and PFM, FOOD) (C14)
+- [ ] 등록된 대상 카테고리 중 없는 것이 있으면 `입력실패`이고 빠진 카테고리 이름이 남는다 (시험 입력: FOOD 제외) (C14)
 - [ ] 10개 점 중 없는 점이 있으면 `입력실패`이고 빠진 점 이름이 남는다 (C15)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_input_checks.py`에 이 작업의 테스트 2개 이상이 통과한다 (기존 테스트를 지우지 않는다)
@@ -459,7 +460,7 @@ T77 → T78
 
 #### T15: 입력 검증: 갱신 주기
 
-**What**: 재고 1일, 판매예측 7일, 공헌이익 35일 초과를 모드에 따라 처리한다
+**What**: 재고 1일, 판매예측 7일 초과를 모드에 따라 처리한다 (공헌이익은 파일이 있을 때만 35일)
 **Where**: `runner/input_checks.py` (수정)
 **Depends on**: T14
 **Reuses**: 입력 묶음 명세서의 수집 시각
@@ -508,7 +509,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 양도 후 보유일수가 최소보장일수보다 작은 건이 있으면 `최소보장`이 위반이고 위반 건수가 남는다 (C45)
+- [ ] 양도 후 보유일수가 최소보장일수보다 작은 건이 있으면 `최소보장`이 위반이고 위반 건수가 남는다 (판정: 배분후 재고 < 내림(판매량 × 일수)) (C45)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_rules.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
 
@@ -603,7 +604,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 규칙을 모두 통과하면 상태가 `완료`이고 요약 건수 5개가 저장된다 (0813 표본: 7,643 / 76 / 11 / 249 / 2,538) (C50)
+- [ ] 규칙을 모두 통과하면 상태가 `완료`이고 요약 건수 5개가 저장된다 (2026-11-18 입력 재실행: 13,887 / 45 / 43 / 4,780 / 2,162) (C50)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_summary.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
 
@@ -644,7 +645,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 재고 카테고리별 엑셀 6개를 올리면 합본 CSV 1개가 만들어진다 (0812: 고객 PC 합본과 내용 지문이 같다) (C8)
+- [ ] 재고 카테고리별 엑셀을 올리면 합본 CSV 1개가 만들어진다 (기준 입력: 고객 PC 합본과 내용 지문이 같다) (C8)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_merge.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
 
@@ -682,7 +683,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] `input/YYYYMMDD/`에 8종 파일이 현행 이름과 형식(재고 utf-8-sig, 공헌이익 UTF-16 탭, 코드표 cp949)으로 만들어진다 (C6)
+- [ ] `input/YYYYMMDD/`에 기간계 입력(재고, 판매예측, 코드표 5종)이 현행 이름과 형식(재고 utf-8-sig, 코드표 cp949)으로 만들어진다 (C6)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_formats.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
 
@@ -720,7 +721,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 매일 수집하지 않는 원천(판매예측, 공헌이익)은 가장 최근 수집분이 그 일자 입력 묶음에 들어간다 (C5)
+- [ ] 매일 수집하지 않는 원천(판매예측)은 가장 최근 수집분이 그 일자 입력 묶음에 들어간다 (C5)
 - [ ] 자동 수집되지 않는 원천의 파일을 올리면 입력 묶음에 들어가고 명세서의 출처가 `올린 파일`이다 (C9)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_prep_main.py`에 이 작업의 테스트 2개 이상이 통과한다 (기존 테스트를 지우지 않는다)
@@ -845,9 +846,9 @@ T77 → T78
 
 ---
 
-#### T35: 전체 배포 정의와 0812 일치 확인
+#### T35: 전체 배포 정의와 기준 입력 일치 확인
 
-**What**: 모든 정의를 하나로 엮어 배포하고 0812 결과를 현행 PC와 대조한다
+**What**: 모든 정의를 하나로 엮어 배포하고 기준 입력의 결과를 현행 PC와 대조한다
 **Where**: `infra/main.bicep`
 **Depends on**: T32, T34
 **Reuses**: e1~e6, a2의 기준 데이터 목록
@@ -855,9 +856,9 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 0812 입력과 운영 파라미터로 현행 pipeline.py를 실행한 결과가 현행 PC에서 같은 날 실행한 결과와 셀 단위로 같다 (C43)
+- [ ] 기준 입력과 운영 파라미터로 현행 pipeline.py를 실행한 결과가 현행 PC에서 같은 날 실행한 결과와 셀 단위로 같다 (C43)
 - [ ] Gate check passes: `ruff check .; ruff format --check .; az bicep build --file infra/main.bicep; pytest tests -v`
-- [ ] Test count: `tests/azure/test_baseline_0812.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
+- [ ] Test count: `tests/azure/test_baseline.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
 
 **Tests**: integration
 **Gate**: build
@@ -1012,7 +1013,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 운영 파라미터 14개가 초기값(기본커버 7, 최소보장 5, 프리미엄 0/0/0, 이동생략 0.0, 최소보충 3, 제조경과 21, 유효임박 6, 통물 한정 true, 점센터 보호 3, 경고 민감도 2.0, 과다 이동 10, 미등록 브랜드 양수도 제외, 반입경과 22, 헤더 행 2)으로 시작한다 (C26)
+- [ ] 운영 파라미터 16개가 초기값(기본커버 7, 최소보장 3, 프리미엄 0/0/0, 이동생략 0.0, 최소보충 3, 제조경과 21, 유효임박 6, 통물 한정 false, 점센터 보호 3, 경고 민감도 2.0, 과다 이동 10, 미등록 브랜드 양수도 제외, 반입경과 22, 헤더 행 2, 점센터 이동 제외 점 인천공항T1·인천공항T2, 점센터 이동 제외 카테고리 EYEWEAR)으로 시작한다 (C26)
 - [ ] 허용 범위 밖의 값은 저장이 거절되고 허용 범위가 보인다 (예: 최소보장일수 31) (C29)
 - [ ] 운영 파라미터를 바꾸면 이전 값, 변경자, 변경 일시, 사유가 이력에 남는다 (C30)
 - [ ] Gate check passes: `pytest tests/unit tests/api -v`
@@ -1054,7 +1055,7 @@ T77 → T78
 **Done when**:
 
 - [ ] 버전·입력 일자·파라미터로 검증 실행을 요청하면 실행 ID가 생기고 검증용 실행기가 시작된다 (C34)
-- [ ] 검증 실행에서 조정한 파라미터는 그 실행에만 적용되고 운영 파라미터는 그대로다 (최소보장 3으로 실행 후 운영값 5) (C27)
+- [ ] 검증 실행에서 조정한 파라미터는 그 실행에만 적용되고 운영 파라미터는 그대로다 (최소보장 5로 실행 후 운영값 3) (C27)
 - [ ] 입력 묶음이 없는 일자를 고르면 요청이 거절되고 선택할 수 있는 일자 목록이 보인다 (C89)
 - [ ] 실행기를 시작하지 못하면 상태 `실행오류`, 사유 `실행기 시작 실패`가 된다 (C93)
 - [ ] Gate check passes: `pytest tests/unit tests/api -v`
@@ -1298,7 +1299,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 화면에 다음이 있다: 프로그램 버전, 입력 일자, 비교 대상, 파라미터 14개(운영값이 채워진 상태), [검증 실행]
+- [ ] 화면에 다음이 있다: 프로그램 버전, 입력 일자, 비교 대상, 파라미터 16개(운영값이 채워진 상태, 목록 값 2개 포함), [검증 실행]
 - [ ] 빈 목록, 처리 중, 오류, 권한 없음 상태가 각각 문구로 보인다
 - [ ] Gate check passes: `pytest tests/unit tests/api -v`
 - [ ] Test count: `tests/api/test_pages.py`에 이 작업의 테스트 2개 이상이 통과한다 (기존 테스트를 지우지 않는다)
@@ -1434,7 +1435,7 @@ T77 → T78
 
 #### T64: 운영 반영 요청과 회귀 실행
 
-**What**: 운영 반영 요청을 받아 0812 입력으로 새 버전과 운영 버전을 실행한다
+**What**: 운영 반영 요청을 받아 기준 입력으로 새 버전과 운영 버전을 실행한다
 **Where**: `api/services/promotion.py`
 **Depends on**: T60
 **Reuses**: g4, g6
@@ -1442,7 +1443,7 @@ T77 → T78
 
 **Done when**:
 
-- [ ] 검증 실행이 완료된 버전에 운영 반영을 요청하면 0812 입력으로 그 버전과 현재 운영 버전이 함께 실행된다 (C72)
+- [ ] 검증 실행이 완료된 버전에 운영 반영을 요청하면 기준 입력으로 그 버전과 현재 운영 버전이 함께 실행된다 (C72)
 - [ ] 가장 최근 검증 실행이 `완료`가 아닌 버전의 운영 반영 요청은 거절된다 (C73)
 - [ ] 회귀 실행 두 건이 끝나면 IT혁신팀에게 두 결과의 비교와 규칙 5개 결과가 보인다 (C74)
 - [ ] Gate check passes: `pytest tests/unit tests/api -v`
@@ -1774,18 +1775,18 @@ Proof: run azure | tests/azure/test_collect.py::test_source_failure_recorded_wit
 **C4** - 재수집을 요청하면 그 일자의 수집이 다시 실행되고 이전 수집분이 남아 있다 (COL-01, AC 4)
 Proof: run azure | tests/azure/test_recollect.py::test_recollect_keeps_previous_raw PASSED
 
-**C5** - 매일 수집하지 않는 원천(판매예측, 공헌이익)은 가장 최근 수집분이 그 일자 입력 묶음에 들어간다 (COL-01, AC 5)
+**C5** - 매일 수집하지 않는 원천(판매예측)은 가장 최근 수집분이 그 일자 입력 묶음에 들어간다 (COL-01, AC 5)
 Proof: run unit | tests/unit/test_prep_main.py::test_latest_non_daily_source_reused PASSED
 
 ### INPUT-01
 
-**C6** - `input/YYYYMMDD/`에 8종 파일이 현행 이름과 형식(재고 utf-8-sig, 공헌이익 UTF-16 탭, 코드표 cp949)으로 만들어진다 (INPUT-01, AC 1)
+**C6** - `input/YYYYMMDD/`에 기간계 입력(재고, 판매예측, 코드표 5종)이 현행 이름과 형식(재고 utf-8-sig, 코드표 cp949)으로 만들어진다 (INPUT-01, AC 1)
 Proof: run unit | tests/unit/test_formats.py::test_eight_files_in_current_formats PASSED
 
 **C7** - 입력 묶음마다 파일별 출처, 수집 시각, 행 수, 내용 지문이 적힌 명세서가 있다 (INPUT-01, AC 2)
 Proof: run unit | tests/unit/test_manifest.py::test_manifest_has_source_time_rows_hash PASSED
 
-**C8** - 재고 카테고리별 엑셀 6개를 올리면 합본 CSV 1개가 만들어진다 (0812: 고객 PC 합본과 내용 지문이 같다) (INPUT-01, AC 3)
+**C8** - 재고 카테고리별 엑셀을 올리면 합본 CSV 1개가 만들어진다 (기준 입력: 고객 PC 합본과 내용 지문이 같다) (INPUT-01, AC 3)
 Proof: run unit | tests/unit/test_merge.py::test_six_files_merge_matches_baseline PASSED
 
 **C9** - 자동 수집되지 않는 원천의 파일을 올리면 입력 묶음에 들어가고 명세서의 출처가 `올린 파일`이다 (INPUT-01, AC 4)
@@ -1805,7 +1806,7 @@ Proof: run unit | tests/unit/test_input_checks.py::test_missing_code_table_fails
 **C13** - 재고 컬럼의 이름이나 순서가 기준 72개와 다르면 `입력실패`이고 다른 컬럼의 위치와 이름이 남는다 (VAL-01, AC 3)
 Proof: run unit | tests/unit/test_input_checks.py::test_column_mismatch_names_position PASSED
 
-**C14** - 6개 카테고리 중 없는 것이 있으면 `입력실패`이고 빠진 카테고리 이름이 남는다 (0813 입력: COS and PFM, FOOD) (VAL-01, AC 4)
+**C14** - 등록된 대상 카테고리 중 없는 것이 있으면 `입력실패`이고 빠진 카테고리 이름이 남는다 (시험 입력: FOOD 제외) (VAL-01, AC 4)
 Proof: run unit | tests/unit/test_input_checks.py::test_missing_category_names_category PASSED
 
 **C15** - 10개 점 중 없는 점이 있으면 `입력실패`이고 빠진 점 이름이 남는다 (VAL-01, AC 5)
@@ -1845,13 +1846,13 @@ Proof: run api | tests/api/test_promotion.py::test_exactly_one_prod_version PASS
 
 ### PARAM-01
 
-**C26** - 운영 파라미터 14개가 초기값(기본커버 7, 최소보장 5, 프리미엄 0/0/0, 이동생략 0.0, 최소보충 3, 제조경과 21, 유효임박 6, 통물 한정 true, 점센터 보호 3, 경고 민감도 2.0, 과다 이동 10, 미등록 브랜드 양수도 제외, 반입경과 22, 헤더 행 2)으로 시작한다 (PARAM-01, AC 1)
+**C26** - 운영 파라미터 16개가 초기값(기본커버 7, 최소보장 3, 프리미엄 0/0/0, 이동생략 0.0, 최소보충 3, 제조경과 21, 유효임박 6, 통물 한정 false, 점센터 보호 3, 경고 민감도 2.0, 과다 이동 10, 미등록 브랜드 양수도 제외, 반입경과 22, 헤더 행 2, 점센터 이동 제외 점 인천공항T1·인천공항T2, 점센터 이동 제외 카테고리 EYEWEAR)으로 시작한다 (PARAM-01, AC 1)
 Proof: run api | tests/api/test_parameter_service.py::test_initial_prod_parameters PASSED
 
-**C27** - 검증 실행에서 조정한 파라미터는 그 실행에만 적용되고 운영 파라미터는 그대로다 (최소보장 3으로 실행 후 운영값 5) (PARAM-01, AC 2)
+**C27** - 검증 실행에서 조정한 파라미터는 그 실행에만 적용되고 운영 파라미터는 그대로다 (최소보장 5로 실행 후 운영값 3) (PARAM-01, AC 2)
 Proof: run api | tests/api/test_run_service.py::test_adjusted_parameter_does_not_change_prod PASSED
 
-**C28** - 실행 시점의 파라미터 14개 값 전체가 실행 기록에 사본으로 남는다 (PARAM-01, AC 3)
+**C28** - 실행 시점의 파라미터 16개 값 전체가 실행 기록에 사본으로 남는다 (PARAM-01, AC 3)
 Proof: run unit | tests/unit/test_settings_file.py::test_parameter_snapshot_in_record PASSED
 
 **C29** - 허용 범위 밖의 값은 저장이 거절되고 허용 범위가 보인다 (예: 최소보장일수 31) (PARAM-01, AC 4)
@@ -1900,15 +1901,15 @@ Proof: run azure | tests/azure/test_concurrency.py::test_two_runs_match_single_r
 **C42** - 실행 기록에 모드, 요청자, 프로그램 버전, 파라미터 사본, 입력 일자, 마스터 버전, 시작·종료 시각, 상태가 있다 (RUN-01, AC 9)
 Proof: run unit | tests/unit/test_record.py::test_record_has_all_fields PASSED
 
-**C43** - 0812 입력과 운영 파라미터로 현행 pipeline.py를 실행한 결과가 현행 PC에서 같은 날 실행한 결과와 셀 단위로 같다 (RUN-01, AC 10)
-Proof: run azure | tests/azure/test_baseline_0812.py::test_0812_matches_pc_result_cell_by_cell PASSED
+**C43** - 기준 입력과 운영 파라미터로 현행 pipeline.py를 실행한 결과가 현행 PC에서 같은 날 실행한 결과와 셀 단위로 같다 (RUN-01, AC 10)
+Proof: run azure | tests/azure/test_baseline.py::test_baseline_matches_pc_result_cell_by_cell PASSED
 
 ### RULE-01
 
 **C44** - 배분 전후 총량이 다른 SKU가 있으면 `총량 보존`이 위반이고 위반 SKU 수가 남는다 (RULE-01, AC 1)
 Proof: run unit | tests/unit/test_rules.py::test_total_conservation_violation PASSED
 
-**C45** - 양도 후 보유일수가 최소보장일수보다 작은 건이 있으면 `최소보장`이 위반이고 위반 건수가 남는다 (RULE-01, AC 2)
+**C45** - 양도 후 보유일수가 최소보장일수보다 작은 건이 있으면 `최소보장`이 위반이고 위반 건수가 남는다 (판정: 배분후 재고 < 내림(판매량 × 일수)) (RULE-01, AC 2)
 Proof: run unit | tests/unit/test_rules.py::test_min_days_violation PASSED
 
 **C46** - 같은 양수도 그룹이 아닌 점 사이의 이동이 있으면 `그룹 내 이동`이 위반이고 위반 건수가 남는다 (RULE-01, AC 3)
@@ -1923,7 +1924,7 @@ Proof: run unit | tests/unit/test_rules.py::test_conversion_over_batch_violation
 **C49** - 규칙 5개 중 하나라도 위반이면 실행 상태가 `규칙위반`이다 (RULE-01, AC 6)
 Proof: run unit | tests/unit/test_rules.py::test_any_violation_sets_status PASSED
 
-**C50** - 규칙을 모두 통과하면 상태가 `완료`이고 요약 건수 5개가 저장된다 (0813 표본: 7,643 / 76 / 11 / 249 / 2,538) (RULE-01, AC 7)
+**C50** - 규칙을 모두 통과하면 상태가 `완료`이고 요약 건수 5개가 저장된다 (2026-11-18 입력 재실행: 13,887 / 45 / 43 / 4,780 / 2,162) (RULE-01, AC 7)
 Proof: run unit | tests/unit/test_summary.py::test_all_pass_saves_five_counts PASSED
 
 ### CMP-01
@@ -1999,7 +2000,7 @@ Proof: run api | tests/api/test_run_service_prod.py::test_rerun_keeps_previous_r
 
 ### PROMO-01
 
-**C72** - 검증 실행이 완료된 버전에 운영 반영을 요청하면 0812 입력으로 그 버전과 현재 운영 버전이 함께 실행된다 (PROMO-01, AC 1)
+**C72** - 검증 실행이 완료된 버전에 운영 반영을 요청하면 기준 입력으로 그 버전과 현재 운영 버전이 함께 실행된다 (PROMO-01, AC 1)
 Proof: run api | tests/api/test_promotion.py::test_request_starts_two_regression_runs PASSED
 
 **C73** - 가장 최근 검증 실행이 `완료`가 아닌 버전의 운영 반영 요청은 거절된다 (PROMO-01, AC 2)
@@ -2108,8 +2109,8 @@ Phase 12 (자동 수집, 자동 시작, 알림, 측정): T73, T74, T75, T76, T77
 
 | 단계 | 시작 조건 |
 | --- | --- |
-| Phase 1 | 고객이 pipeline.py, settings.json, CLAUDE.md, merge_excel_to_csv.py, 0812·0813 입력과 결과 폴더를 준다 |
-| Phase 2~5 | Phase 1의 재현 확인 보고서에서 Linux 결과가 같다고 확인된다. 다르면 실행기 선택을 다시 한다 |
+| Phase 1 | 소스와 2026-11-18 입력·결과는 받았다. 같은 입력으로 PC에서 실행한 결과 한 벌이 더 필요하다 (Q17) |
+| Phase 2~5 | Linux에서 수정 없이 실행됨은 확인했다. PC와 결과가 같다는 확인이 남았다. 다르면 실행기 선택을 다시 한다 |
 | Phase 6 | Azure 환경 제공 주체와 보안 기준이 정해진다 (Q7) |
 | Phase 9, 11 | 로그인 방식이 정해진다 (Q16) |
 | Phase 10~11 | 운영 반영에 IT혁신팀 승인을 두는 데 고객이 동의한다 (Q3) |
