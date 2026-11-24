@@ -15,7 +15,7 @@
 | --- | --- | --- | --- |
 | 실행 틀 | `runner/` | 입력 배치 → 입력 검증 → 프로그램 실행 → 규칙 확인 → 기록 | 실행기 (Container Apps Job) |
 | 입력 구성 | `prep/` | 수집 원본과 올린 파일을 현행 파일 형식으로 변환 | 입력 구성 (Container Apps Job) |
-| 관리 화면·API | `api/` | 화면 8개, 실행 요청, 비교, 승인, 내려받기 | App Service |
+| 관리 화면·API | `api/` | 화면 9개, 실행 요청, 비교, 이상치 질문·답변, 승인, 내려받기 | App Service |
 | 수집 | `adf/` | 기간계 조회, 원본 저장, 입력 구성 시작, 입력 준비됨 알림 | Data Factory |
 | 인프라 | `infra/` | 저장소, 권한, 네트워크, 실행기, DB, 웹 앱 정의 | Azure 배포 |
 
@@ -93,6 +93,8 @@ sequenceDiagram
 | 입력 검증, 업무 규칙 5개, 실행 상태 판정, 요약 건수 | `runner/` |
 | 건수 차이, 달라진 SKU, 실행일 경고 | `api/services/compare` |
 | 승인·운영 반영의 허용과 거절, 운영 버전 1개 유지 | `api/services/approval`, `promotion` |
+| 이상치 추출 (리포트 기반) | `runner/anomalies` |
+| 질문 목록, 답변 허용 유형, 반영 계획, 이상치 처리 상태 | `api/services/question_service`, `compare` |
 | 내려받기 허용, 파일 순서, 검증용 표시 | `api/services/download` |
 | 역할별 허용 | `api/auth` |
 
@@ -125,7 +127,7 @@ sequenceDiagram
 | 정보계 (판매예측, 코드표 5종) | Data Factory가 수집 중계 서버를 통해 테이블을 조회한다 |
 | L-lit (재고), L-DEX (공헌이익) | 원천 테이블이 확인되면 같은 방식. 확인 전에는 화면에서 내려받은 파일을 올린다 |
 | ERP | 연계하지 않는다. 담당자가 결과 파일을 내려받아 직접 올린다 |
-| Microsoft Entra ID | App Service의 기본 로그인 기능과 앱 역할 4개 |
+| Microsoft Entra ID | App Service의 기본 로그인 기능과 앱 역할 5개 (바이어 포함) |
 | 메일 | Logic Apps로 보낸다 |
 
 ---
@@ -184,6 +186,17 @@ sequenceDiagram
 - **Dependencies**: 실행 이미지의 제한 사용자
 - **Reuses**: 고객 pipeline.py (수정 없음)
 
+### runner/anomalies
+
+- **Purpose**: 결과의 검토리포트에서 이상치를 뽑는다
+- **Location**: `runner/anomalies.py`
+- **Interfaces**:
+  - 입력: 결과 폴더의 검토리포트 (모니터1 이동건수 이상, 모니터2 과다 이동, 미충전 부족분)
+  - 출력: 이상치 목록 (종류, 상품, 점, 내용). 실행 기록에 넣는다
+  - 운영 버전 대비 건수 차이는 비교가 필요하므로 `api/services/compare`가 더한다
+- **Dependencies**: openpyxl
+- **Reuses**: 프로그램이 만드는 검토리포트 (추가 계산 없음)
+
 ### runner/rules, runner/summary, runner/record
 
 - **Purpose**: 업무 규칙 5개를 확인한다 / 요약 건수 5개를 뽑는다 / 실행 기록을 쓴다
@@ -218,6 +231,7 @@ sequenceDiagram
 | `master_service` | 마스터 버전 보관, 시트 6개 확인 |
 | `run_service` | 실행 생성, 지시서 작성, 모드에 맞는 실행기 시작, 비교용 동반 실행 |
 | `run_sync` | 실행기 상태와 결과 폴더의 기록을 읽어 DB 갱신 |
+| `question_service` | 이상치로 질문 목록 생성, CSV 내보내기, 답변 기록(화면·파일), 반영 계획, 재테스트 지시 |
 | `compare` | 두 실행의 건수 차이와 달라진 SKU |
 | `approval` | 운영 결과 승인 |
 | `promotion` | 운영 반영 요청, 회귀 실행, 승인·반려·되돌리기 |
@@ -229,7 +243,7 @@ sequenceDiagram
 
 ### api/routes, api/auth, api/templates
 
-- **Purpose**: 요청을 받아 역할을 확인하고 서비스를 부른다 / 화면 8개를 그린다
+- **Purpose**: 요청을 받아 역할을 확인하고 서비스를 부른다 / 화면 9개를 그린다
 - **Location**: `api/routes/`, `api/auth.py`, `api/templates/`
 - **Interfaces**: 경로 목록은 `artifacts/system_design_allocation-poc.md`의 인터페이스 표를 따른다
 - **Dependencies**: services, Entra ID
@@ -269,6 +283,7 @@ sequenceDiagram
 | 마스터 버전 | 양수도 그룹, 제외·전용 SKU 각각 |
 | 요청자, 요청 시각 | |
 | 계속 실행 여부 | 확인대기에서 담당자가 계속을 눌렀는지 |
+| 임시 제외 상품 | 재테스트에서만 이동·전환을 막을 상품 목록 (이상치 답변 반영). 실행 틀이 제외 마스터 사본에 추가한다 |
 
 ### 실행 기록 (실행기 → 관리 API)
 
@@ -280,6 +295,7 @@ sequenceDiagram
 | 규칙 결과 | 5개 각각 통과 여부, 위반 건수, 위반 예시 |
 | 요약 건수 | 5개 |
 | 프로그램 로그 | 마지막 200줄 |
+| 이상치 | 검토리포트에서 뽑은 이동 건수 이상, 과다 이동, 미충전 부족분 |
 
 ### 입력 묶음 명세서 (입력 구성 → 실행기, 관리 API)
 
@@ -307,6 +323,8 @@ sequenceDiagram
 | 규칙 위반 | `규칙위반`. 승인과 운영 반영 요청을 거절 | 위반한 규칙과 건수를 본다 |
 | 입력 준비됨 알림이 두 번 옴 | 두 번째는 무시 | 영향 없음 |
 | 역할 밖 기능 호출 | 거절 | "권한이 없습니다" |
+| 답변 파일에 허용되지 않은 답변 유형 | 그 행만 건너뜀 | 질문번호와 허용 유형을 본다 |
+| 바이어가 다른 사람의 질문에 답변 | 거절 | "권한이 없습니다" |
 
 ---
 
@@ -338,6 +356,7 @@ sequenceDiagram
 | 입력 형식 | 현행 파일 이름·형식 그대로 | 프로그램을 고치지 않는다. `AD-003` |
 | 실행기는 DB에 쓰지 않음 | 결과 폴더의 실행 기록을 관리 API가 읽어 반영 | 실행기의 권한을 저장소로 한정한다 |
 | 비교 계산의 위치 | 관리 API | 두 실행이 모두 끝난 뒤에만 할 수 있다 |
+| 이상치 답변의 이동 제외 반영 | 제외·전용 SKU 마스터의 임시 사본에 행 추가 | 현행 프로그램의 제외 기능을 써서 프로그램을 고치지 않는다. 등록된 마스터는 바꾸지 않는다 |
 | 화면 기술 | 서버에서 그리는 화면 (FastAPI + 템플릿) | 프로그램과 같은 Python 하나로 만든다. 화면 8개 규모에 충분하다 |
 | 인프라 정의 | Bicep | Azure 기본 도구다. 고객 표준이 다르면 바꾼다 |
 | 날짜 고정 | PoC 기본 범위에는 넣지 않음 | 프로그램 수정 없이 가능함을 확인했다(libfaketime). 넣을지는 고객 답에 따른다 |

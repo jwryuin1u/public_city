@@ -15,8 +15,8 @@ GATE = {"quick": "pytest tests/unit -v", "full": "pytest tests/unit tests/api -v
 PHASES = OrderedDict([
     (1, "기반과 현행 재현"), (2, "실행 틀"), (3, "입력 검증"), (4, "업무 규칙과 실행 엮기"),
     (5, "입력 구성"), (6, "Azure 환경"), (7, "기록과 API 기반"), (8, "검증 실행 서비스"),
-    (9, "검증 실행 경로와 화면"), (10, "운영 실행과 승인 서비스"), (11, "운영 경로와 화면"),
-    (12, "자동 수집, 자동 시작, 알림, 측정"),
+    (9, "검증 실행 경로와 화면"), (10, "이상치 질문·답변과 재테스트"), (11, "운영 실행과 승인 서비스"),
+    (12, "운영 경로와 화면"), (13, "자동 수집, 자동 시작, 알림, 측정"),
 ])
 
 # task: key, phase, title, what, where, deps, reuses, req, grp(unit/api/azure/None), testfile, checks, extra_done
@@ -153,7 +153,7 @@ t("f2", 7, "DB 연결", "기록 DB 연결과 테이블 생성을 만든다", "`a
 t("f3", 7, "로그인과 역할 확인", "요청의 사용자와 역할을 확인하고 역할 밖의 기능을 거절한다", "`api/auth.py`",
   [], "없음", "AUTH-01", "api", "test_auth.py",
   [("AUTH-01", 2, "자기 역할에 없는 기능을 호출하면 거절되고 \"권한이 없습니다\"가 보인다", "test_wrong_role_is_rejected"),
-   ("AUTH-01", 3, "역할은 4개(현업 사용자, S&OP 담당자, MD, IT혁신팀)이고 한 사용자가 여러 역할을 가질 수 있다", "test_user_can_hold_multiple_roles")])
+   ("AUTH-01", 3, "역할은 5개(현업 사용자, S&OP 담당자, MD, IT혁신팀, 바이어)이고 한 사용자가 여러 역할을 가질 수 있다", "test_user_can_hold_multiple_roles")])
 t("f4", 7, "저장소 호출", "관리 API가 저장소에 프로그램·마스터·올린 파일을 쓰고 결과를 읽는 기능을 만든다", "`api/clients/blob_client.py`",
   [], "없음", "CODE-01", "azure", "test_blob_client.py", [],
   ["프로그램 파일을 올리고 다시 읽으면 내용 지문이 같다", "이미 있는 프로그램 버전 경로에 다시 쓰면 실패한다"])
@@ -231,45 +231,79 @@ for k, f, name, req, items in [
     t(k, 9, f"화면: {name}", f"{name} 화면을 만든다", f"`api/templates/{f}`", ["h6"], "없음", req, "api", "test_pages.py", [],
       [f"화면에 다음이 있다: {items}", "빈 목록, 처리 중, 오류, 권한 없음 상태가 각각 문구로 보인다"])
 
-# ---------- Phase 10
-t("i1", 10, "운영 실행 시작", "운영 버전·운영 파라미터·당일 입력 묶음으로 운영용 실행기를 시작한다", "`api/services/run_service.py` (수정)",
+# ---------- Phase 10: 이상치 질문·답변과 재테스트
+t("q1", 10, "이상치 추출", "결과 파일의 검토리포트에서 이상치(이동 건수 이상, 과다 이동, 미충전 부족분)를 뽑아 실행 기록에 넣는다", "`runner/anomalies.py`",
+  [], "검토리포트 엑셀의 모니터1·모니터2·미충전 부족분 시트", "QA-01", "unit", "test_anomalies.py",
+  [("QA-01", 1, "검증 실행이 완료되면 이상치(이동 건수 이상, 과다 이동, 미충전 부족분, 운영 버전 대비 건수 차이)가 종류·상품·내용·문의 대상과 함께 보인다", "test_anomalies_extracted_from_review_report")])
+t("q2", 10, "임시 제외 반영", "지시서의 임시 제외 상품을 제외·전용 SKU 마스터의 사본에 추가해 작업 폴더에 놓는다", "`runner/workspace.py` (수정)",
+  [], "b3, 제외·전용 SKU 엑셀의 양수도제외상품·온오프전환제외상품 시트", "QA-01", "unit", "test_workspace.py",
+  [("QA-01", 11, "이동 제외 답변은 제외·전용 SKU 마스터의 임시 사본에만 추가되고 등록된 마스터 버전은 그대로다", "test_temp_exclusion_does_not_change_master")])
+t("q3", 10, "질문 목록 만들기와 보내기", "이상치로 질문 목록을 만들고 CSV로 내보내고 보냄 상태로 바꾼다", "`api/services/question_service.py`",
+  [], "g5, g6", "QA-01", "api", "test_question_service.py",
+  [("QA-01", 2, "질문 목록을 만들면 이상치마다 문의 대상(프로그램 작성자 또는 해당 점 바이어)과 질문 문안이 생긴다", "test_question_list_has_recipient_and_text"),
+   ("QA-01", 3, "질문 목록을 내려받으면 질문번호, 받는 사람, 상품코드, 상품명, 이상 내용, 질문, 답변 선택, 답변 내용 열을 가진 CSV가 나온다", "test_question_csv_columns"),
+   ("QA-01", 4, "질문을 보내면 질문 목록의 상태가 `보냄`이 되고 보낸 시각이 기록된다", "test_send_sets_status_and_time")])
+t("q4", 10, "답변 기록", "화면 입력과 파일 업로드로 들어온 답변을 기록한다", "`api/services/question_service.py` (수정)",
+  ["q3"], "없음", "QA-01", "api", "test_question_service.py",
+  [("QA-01", 5, "화면에서 답변 유형과 내용을 저장하면 답변자, 일시와 함께 기록된다", "test_screen_answer_recorded_with_who_and_when"),
+   ("QA-01", 6, "답변이 적힌 질문 목록 파일을 올리면 질문번호가 같은 질문에 그 행의 답변이 기록된다", "test_uploaded_answers_matched_by_number"),
+   ("QA-01", 7, "허용되지 않은 답변 유형이 적힌 행은 기록되지 않고 질문번호와 허용 유형이 보인다", "test_invalid_answer_type_reported"),
+   ("QA-01", 8, "바이어가 자기에게 온 질문이 아닌 질문에 답하면 거절된다", "test_buyer_cannot_answer_others_question")])
+t("q5", 10, "답변 반영 계획", "답변 유형별로 반영 계획을 만든다", "`api/services/question_service.py` (수정)",
+  ["q4"], "없음", "QA-01", "api", "test_question_service.py",
+  [("QA-01", 9, "답변이 1건 이상이면 반영 계획(파라미터 변경, 이동 제외 상품, 사유 확인 항목, 프로그램 수정 필요 항목, 미답변 항목)이 보인다", "test_plan_groups_answers_by_type")])
+t("q6", 10, "답변 반영 재테스트", "반영 계획으로 지시서를 만들어 검증 실행을 시작한다", "`api/services/run_service.py` (수정)",
+  ["q5", "q2"], "g4", "QA-01", "api", "test_run_service.py",
+  [("QA-01", 10, "재테스트는 원래 실행의 프로그램 버전·입력 일자에 파라미터 조정 답변의 제안값과 이동 제외 답변의 상품을 반영해 시작된다", "test_retest_applies_parameter_and_exclusions")])
+t("q7", 10, "이상치 처리 상태", "재테스트 결과에서 이상치별 처리 상태와 원래 실행 대비 차이를 계산한다", "`api/services/compare.py` (수정)",
+  ["q6"], "g6", "QA-01", "api", "test_compare.py",
+  [("QA-01", 12, "재테스트가 완료되면 이상치마다 처리 상태(해소, 확인됨, 남음)와 원래 실행 대비 건수 차이가 보인다", "test_anomaly_status_after_retest")])
+t("q8", 10, "질문·답변 경로", "질문 목록 만들기, 내려받기, 보내기, 답변, 파일 올리기, 재테스트 경로를 만든다", "`api/routes/questions.py`",
+  ["q7"], "q3~q7", "QA-01", "api", "test_questions_route.py", [],
+  ["만들기·보내기·파일 올리기·재테스트는 현업 사용자만 할 수 있다", "바이어는 질문·답변 화면만 볼 수 있다"])
+t("q9", 10, "화면: 질문·답변", "질문·답변 화면을 만든다", "`api/templates/questions.html`",
+  ["q8"], "없음", "QA-01", "api", "test_pages.py", [],
+  ["화면에 다음이 있다: 진행 단계(만들기, 보내기, 답변 받기, 재테스트), 질문과 답변 표, 질문 목록 내려받기, [질문 보내기], 답변 입력란, 파일 올리기, 반영 계획, [답변 반영해 재테스트]", "빈 목록, 처리 중, 오류, 권한 없음 상태가 각각 문구로 보인다"])
+
+# ---------- Phase 11
+t("i1", 11, "운영 실행 시작", "운영 버전·운영 파라미터·당일 입력 묶음으로 운영용 실행기를 시작한다", "`api/services/run_service.py` (수정)",
   [], "g4", "OPS-01", "api", "test_run_service_prod.py",
   [("OPS-01", 1, "[지금 실행]을 누르면 운영 버전, 운영 파라미터, 당일 입력 묶음으로 운영용 실행기가 시작된다", "test_prod_run_uses_prod_version_and_parameters"),
    ("OPS-01", 2, "당일 입력 묶음이 `준비됨`이 아니면 실행이 시작되지 않고 입력 묶음의 상태가 보인다", "test_prod_run_needs_ready_input"),
    ("OPS-01", 9, "같은 일자에 운영 실행을 다시 하면 새 실행 ID로 저장되고 이전 실행의 결과가 남아 있다", "test_rerun_keeps_previous_result"),
    ("ISO-01", 4, "상태가 `운영`이 아닌 버전을 지정한 운영 실행 요청은 거절된다", "test_prod_run_rejects_non_prod_version"),
    ("EDGE-01", 2, "운영 버전이 없으면 운영 실행 요청이 거절되고 \"운영 버전이 지정되지 않았습니다\"가 보인다", "test_prod_run_without_prod_version")])
-t("i2", 10, "직전 운영 결과와 비교", "운영 실행을 직전 운영 실행과 비교한다", "`api/services/compare.py` (수정)",
+t("i2", 11, "직전 운영 결과와 비교", "운영 실행을 직전 운영 실행과 비교한다", "`api/services/compare.py` (수정)",
   [], "g6", "OPS-01", "api", "test_compare_prod.py",
   [("OPS-01", 4, "운영 실행이 완료되면 직전 운영 실행 결과와의 건수 4종 차이가 보인다", "test_prod_run_compared_with_previous")])
-t("i3", 10, "운영 결과 승인", "운영 실행의 승인과 거절 조건을 만든다", "`api/services/approval.py`",
+t("i3", 11, "운영 결과 승인", "운영 실행의 승인과 거절 조건을 만든다", "`api/services/approval.py`",
   ["i1"], "없음", "OPS-01", "api", "test_approval.py",
   [("OPS-01", 5, "`완료`된 운영 실행을 승인하면 상태가 `승인됨`이 되고 승인자와 일시가 기록된다", "test_approve_records_approver_and_time"),
    ("OPS-01", 6, "상태가 `규칙위반`인 실행의 승인 요청은 거절된다", "test_rule_violation_cannot_be_approved")])
-t("i4", 10, "운영 결과 내려받기", "승인된 운영 결과만 ERP 업로드 순서대로 내려준다", "`api/services/download.py` (수정)",
+t("i4", 11, "운영 결과 내려받기", "승인된 운영 결과만 ERP 업로드 순서대로 내려준다", "`api/services/download.py` (수정)",
   ["i3"], "g8", "OPS-01", "api", "test_download_prod.py",
   [("OPS-01", 7, "`승인됨`이 아닌 운영 실행의 ERP 업로드 파일 내려받기는 거절된다", "test_download_requires_approval"),
    ("OPS-01", 8, "승인된 실행의 내려받기 화면에 파일이 ① 재고전환_온오프 ② 양수도 ③ 재고전환_오프온 순서로 보인다", "test_files_in_erp_upload_order")])
-t("i5", 10, "운영 반영 요청과 회귀 실행", "운영 반영 요청을 받아 기준 입력으로 새 버전과 운영 버전을 실행한다", "`api/services/promotion.py`",
+t("i5", 11, "운영 반영 요청과 회귀 실행", "운영 반영 요청을 받아 기준 입력으로 새 버전과 운영 버전을 실행한다", "`api/services/promotion.py`",
   ["i1"], "g4, g6", "PROMO-01", "api", "test_promotion.py",
   [("PROMO-01", 1, "검증 실행이 완료된 버전에 운영 반영을 요청하면 기준 입력으로 그 버전과 현재 운영 버전이 함께 실행된다", "test_request_starts_two_regression_runs"),
    ("PROMO-01", 2, "가장 최근 검증 실행이 `완료`가 아닌 버전의 운영 반영 요청은 거절된다", "test_request_needs_completed_test_run"),
    ("PROMO-01", 3, "회귀 실행 두 건이 끝나면 IT혁신팀에게 두 결과의 비교와 규칙 5개 결과가 보인다", "test_regression_result_shown_to_it")])
-t("i6", 10, "운영 반영 승인과 반려", "운영 반영의 승인, 반려, 거절 조건을 만든다", "`api/services/promotion.py` (수정)",
+t("i6", 11, "운영 반영 승인과 반려", "운영 반영의 승인, 반려, 거절 조건을 만든다", "`api/services/promotion.py` (수정)",
   ["i5"], "없음", "PROMO-01", "api", "test_promotion.py",
   [("PROMO-01", 4, "승인하면 그 버전이 `운영`, 이전 운영 버전이 `보관`이 된다", "test_approve_switches_prod_version"),
    ("PROMO-01", 5, "반려하면 그 버전이 `반려`가 되고 의견이 기록된다", "test_reject_records_comment"),
    ("PROMO-01", 6, "새 버전의 회귀 실행이 `규칙위반`이나 `실행오류`면 승인이 거절된다", "test_failed_regression_cannot_be_approved"),
    ("CODE-01", 6, "상태가 `운영`인 버전은 항상 1개다", "test_exactly_one_prod_version")])
-t("i7", 10, "이전 버전으로 되돌리기", "보관된 버전을 다시 운영 버전으로 지정한다", "`api/services/promotion.py` (수정)",
+t("i7", 11, "이전 버전으로 되돌리기", "보관된 버전을 다시 운영 버전으로 지정한다", "`api/services/promotion.py` (수정)",
   ["i6"], "없음", "PROMO-01", "api", "test_promotion.py",
   [("PROMO-01", 7, "`보관` 버전을 되돌리면 그 버전이 `운영`, 현재 운영 버전이 `보관`이 된다", "test_rollback_switches_versions")])
 
-# ---------- Phase 11
-t("i8", 11, "운영 반영 경로", "운영 반영 요청, 승인, 반려, 되돌리기 경로를 만든다", "`api/routes/promotions.py`",
+# ---------- Phase 12
+t("i8", 12, "운영 반영 경로", "운영 반영 요청, 승인, 반려, 되돌리기 경로를 만든다", "`api/routes/promotions.py`",
   [], "i5~i7", "PROMO-01", "api", "test_promotions_route.py", [],
   ["요청은 현업 사용자만, 승인·반려·되돌리기는 IT혁신팀만 할 수 있다"])
-t("i9", 11, "입력 묶음 경로", "입력 묶음 목록, 파일 올리기, 재수집 요청 경로를 만든다", "`api/routes/input_sets.py`",
+t("i9", 12, "입력 묶음 경로", "입력 묶음 목록, 파일 올리기, 재수집 요청 경로를 만든다", "`api/routes/input_sets.py`",
   [], "d5, f4", "INPUT-01", "api", "test_input_sets_route.py", [],
   ["파일을 올리면 그 일자의 입력 구성이 시작된다", "파일 올리기와 재수집 요청은 S&OP 담당자만 할 수 있다"])
 for k, f, name, req, items in [
@@ -277,34 +311,34 @@ for k, f, name, req, items in [
     ("i11", "input_status.html", "S6 입력 상태", "VAL-01", "일자별 입력 묶음 상태, 파일별 출처와 수집 시각, 실패·경고 내용, [실행 계속], [재수집 요청], 파일 올리기"),
     ("i12", "prod_run.html", "S7 운영 실행·결과", "OPS-01", "[지금 실행], 상태, 요약 건수, 직전 결과와의 차이, 규칙 5개 결과, 일일결과리포트, 구간별 소요 시간, [승인]"),
     ("i13", "downloads.html", "S8 결과 내려받기", "OPS-01", "ERP 업로드 순서 안내, 순서대로 놓인 파일 목록, 리포트 파일")]:
-    t(k, 11, f"화면: {name}", f"{name} 화면을 만든다", f"`api/templates/{f}`", ["i8", "i9"] if k == "i10" else [], "없음", req, "api", "test_pages_prod.py", [],
+    t(k, 12, f"화면: {name}", f"{name} 화면을 만든다", f"`api/templates/{f}`", ["i8", "i9"] if k == "i10" else [], "없음", req, "api", "test_pages_prod.py", [],
       [f"화면에 다음이 있다: {items}", "빈 목록, 처리 중, 오류, 권한 없음 상태가 각각 문구로 보인다"])
 
-# ---------- Phase 12
-t("j1", 12, "Data Factory 정의", "Data Factory, 수집 중계 서버 연결, 접속 정보 보관소를 정의한다", "`infra/adf.bicep`",
+# ---------- Phase 13
+t("j1", 13, "Data Factory 정의", "Data Factory, 수집 중계 서버 연결, 접속 정보 보관소를 정의한다", "`infra/adf.bicep`",
   [], "없음", "COL-01", None, None, [], ["Data Factory가 수집 중계 서버를 통해 접근이 승인된 원천에 연결된다", "접속 정보는 Key Vault에만 있다"])
-t("j2", 12, "수집 파이프라인", "원천 조회, 원본 저장, 입력 구성 시작, 입력 준비됨 알림을 파이프라인으로 정의한다", "`adf/pl_collect_daily.json`",
+t("j2", 13, "수집 파이프라인", "원천 조회, 원본 저장, 입력 구성 시작, 입력 준비됨 알림을 파이프라인으로 정의한다", "`adf/pl_collect_daily.json`",
   ["j1"], "d5의 입력 구성", "COL-01", "azure", "test_collect.py",
   [("COL-01", 1, "수집 시각이 되면 접근이 승인된 원천의 원본이 `raw/<원천>/YYYYMMDD/`에 저장된다", "test_scheduled_collect_writes_raw"),
    ("COL-01", 2, "한 일자의 수집이 끝나면 그 일자의 입력 구성이 시작된다", "test_collect_starts_prep"),
    ("COL-01", 3, "원천 조회가 실패하면 입력 묶음이 `실패`이고 실패한 원천 이름이 남는다", "test_source_failure_recorded_with_name")])
-t("j3", 12, "재수집 호출", "관리 API가 그 일자의 수집 파이프라인을 다시 실행시키는 기능을 만든다", "`api/clients/adf_client.py`",
+t("j3", 13, "재수집 호출", "관리 API가 그 일자의 수집 파이프라인을 다시 실행시키는 기능을 만든다", "`api/clients/adf_client.py`",
   ["j2"], "없음", "COL-01", "azure", "test_recollect.py",
   [("COL-01", 4, "재수집을 요청하면 그 일자의 수집이 다시 실행되고 이전 수집분이 남아 있다", "test_recollect_keeps_previous_raw")])
-t("j4", 12, "입력 준비됨 수신과 자동 시작", "수집 파이프라인의 알림을 받아 자동 시작 설정에 따라 운영 실행을 시작한다", "`api/routes/internal.py`",
+t("j4", 13, "입력 준비됨 수신과 자동 시작", "수집 파이프라인의 알림을 받아 자동 시작 설정에 따라 운영 실행을 시작한다", "`api/routes/internal.py`",
   [], "i1", "SCHED-01", "api", "test_internal.py",
   [("SCHED-01", 1, "자동 시작이 켜져 있을 때 입력 준비됨 알림이 오면 그 일자의 운영 실행이 시작된다", "test_auto_start_on_input_ready"),
    ("SCHED-01", 2, "자동 시작이 꺼져 있으면 입력 준비됨 알림이 와도 운영 실행이 시작되지 않는다", "test_no_auto_start_when_off"),
    ("SCHED-01", 3, "같은 일자의 입력 준비됨 알림이 다시 와도 자동 실행이 다시 시작되지 않는다", "test_duplicate_input_ready_ignored")])
-t("j5", 12, "알림 보내기", "수집 실패, 입력실패, 실행 종료, 승인 요청 알림을 만든다", "`api/services/notify.py`",
+t("j5", 13, "알림 보내기", "수집 실패, 입력실패, 실행 종료, 승인 요청 알림을 만든다", "`api/services/notify.py`",
   [], "없음", "NOTI-01", "api", "test_notify.py",
   [("NOTI-01", 1, "수집이 실패하면 S&OP 담당자에게 실패한 원천 이름이 담긴 알림이 간다", "test_collect_failure_notice_names_source"),
    ("NOTI-01", 2, "운영 실행이 `입력실패`가 되면 S&OP 담당자에게 실패한 검증 항목이 담긴 알림이 간다", "test_input_failure_notice_names_check"),
    ("NOTI-01", 3, "운영 실행이 `완료`나 `규칙위반`으로 끝나면 S&OP 담당자에게 상태와 요약 건수가 담긴 알림이 간다", "test_run_end_notice_has_status_and_counts"),
    ("NOTI-01", 4, "회귀 실행이 끝나면 IT혁신팀에게 승인 요청 알림이 간다", "test_regression_end_notifies_it")])
-t("j6", 12, "알림 연결 정의", "메일을 보내는 Logic Apps를 정의한다", "`infra/logicapp.bicep`",
+t("j6", 13, "알림 연결 정의", "메일을 보내는 Logic Apps를 정의한다", "`infra/logicapp.bicep`",
   ["j5"], "없음", "NOTI-01", None, None, [], ["관리 API가 호출하면 지정한 수신자에게 메일이 간다"])
-t("j7", 12, "구간별 시각 기록", "운영 실행의 구간별 시각을 기록하고 소요 시간을 계산한다", "`api/services/timing.py`",
+t("j7", 13, "구간별 시각 기록", "운영 실행의 구간별 시각을 기록하고 소요 시간을 계산한다", "`api/services/timing.py`",
   [], "입력 묶음 명세서, 실행 기록", "MEAS-01", "api", "test_timing.py",
   [("MEAS-01", 1, "운영 실행마다 수집 시작, 입력 준비됨, 실행 시작, 실행 종료, 승인의 시각이 기록되고 구간별 소요 시간이 보인다", "test_five_timestamps_and_durations")])
 
@@ -316,9 +350,9 @@ for x in T:
         assert d in ids, d
         assert phase_of[d] <= x["phase"], (x["key"], d)
 
-REQ_ORDER = ["COL-01", "INPUT-01", "VAL-01", "CODE-01", "PARAM-01", "MST-01", "RUN-01", "RULE-01", "CMP-01", "ISO-01",
+REQ_ORDER = ["COL-01", "INPUT-01", "VAL-01", "CODE-01", "PARAM-01", "MST-01", "RUN-01", "RULE-01", "CMP-01", "QA-01", "ISO-01",
              "AUTH-01", "OPS-01", "PROMO-01", "HIST-01", "SCHED-01", "NOTI-01", "MEAS-01", "EDGE-01"]
-EXPECT = dict(zip(REQ_ORDER, [5, 5, 9, 6, 5, 3, 10, 7, 5, 4, 3, 9, 7, 2, 3, 4, 1, 5]))
+EXPECT = dict(zip(REQ_ORDER, [5, 5, 9, 6, 5, 3, 10, 7, 5, 12, 4, 3, 9, 7, 2, 3, 4, 1, 5]))
 checks = []
 for x in T:
     for (req, ac, claim, tn) in x["checks"]:
@@ -354,6 +388,7 @@ A("**Design**: `.specs/features/allocation-poc/design.md`")
 A("**Status**: Approved")
 A('**Approved**: 2026-11-17 - user: "승인할게. 다음 작업 이어서 진행해줘"')
 A('**Revised**: 2026-11-23 - user: "모두 너에게 맡길게. 가장 최적의 방안을 검토해서 작업 진행해줘" — 고객 자료 수령 반영 (기준 입력, 대상 카테고리, 파라미터 16개, 공헌이익 선택 입력). 근거는 `docs/reproduction-report.md`')
+A('**Revised**: 2026-11-24 - user: "PoC 구현 범위에 넣어서 전부 고쳐줘" — 이상치 질문·답변과 재테스트(QA-01) 추가: Phase 10, 작업 9개, 확인 항목 12개')
 A(f"**Build**: `ruff check .; ruff format --check .; az bicep build --file infra/main.bicep`")
 for n, cmd in RUNS.items():
     A(f"**Run {n}**: `{cmd}`")
@@ -448,11 +483,12 @@ A("| --- | --- |")
 A("| Phase 1 | 소스와 2026-11-18 입력·결과는 받았다. 같은 입력으로 PC에서 실행한 결과 한 벌이 더 필요하다 (Q17) |")
 A("| Phase 2~5 | Linux에서 수정 없이 실행됨은 확인했다. PC와 결과가 같다는 확인이 남았다. 다르면 실행기 선택을 다시 한다 |")
 A("| Phase 6 | Azure 환경 제공 주체와 보안 기준이 정해진다 (Q7) |")
-A("| Phase 9, 11 | 로그인 방식이 정해진다 (Q16) |")
-A("| Phase 10~11 | 운영 반영에 IT혁신팀 승인을 두는 데 고객이 동의한다 (Q3) |")
-A("| Phase 12 | 기간계 원천의 접근이 승인된다 (Q1). 승인된 원천만 파이프라인에 넣는다 |")
+A("| Phase 9, 12 | 로그인 방식이 정해진다 (Q16) |")
+A("| Phase 10 | 이상치 기준, 문의 대상, 답변 반영 방식이 정해진다 (Q23~Q25) |")
+A("| Phase 11~12 | 운영 반영에 IT혁신팀 승인을 두는 데 고객이 동의한다 (Q3) |")
+A("| Phase 13 | 기간계 원천의 접근이 승인된다 (Q1). 승인된 원천만 파이프라인에 넣는다 |")
 A("")
-A("Phase 12는 접근 승인에 시간이 걸리므로 승인 절차는 Phase 1과 동시에 시작한다.\n")
+A("Phase 13은 접근 승인에 시간이 걸리므로 승인 절차는 Phase 1과 동시에 시작한다.\n")
 A("---\n")
 A("## Requirement Coverage\n")
 A("| Requirement ID | 수용 기준 수 | 확인 항목 | 작업 |")
@@ -462,7 +498,7 @@ for r in REQ_ORDER:
     ts = sorted({ids[c[7]] for c in cs}, key=lambda s: int(s[1:]))
     A(f"| {r} | {EXPECT[r]} | {cid[(r, 1)]}~{cid[(r, EXPECT[r])]} | {', '.join(ts)} |")
 A("")
-A(f"**Coverage:** 요구사항 18개, 수용 기준 {len(checks)}개가 모두 확인 항목과 작업에 연결되어 있다.")
+A(f"**Coverage:** 요구사항 19개, 수용 기준 {len(checks)}개가 모두 확인 항목과 작업에 연결되어 있다.")
 
 open(OUT, "w", encoding="utf-8").write("\n".join(L) + "\n")
 print(len(T), "tasks", len(checks), "checks")

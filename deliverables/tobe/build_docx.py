@@ -241,8 +241,9 @@ def build_guide():
             pic = d.add_paragraph(); pic.alignment = WD_ALIGN_PARAGRAPH.CENTER
             pic.add_run().add_picture(str(f), width=Cm(w))
             n += 1
-    d.add_heading("협의 필요 사항 (이상치 질문·답변)", 1)
-    table(d, ["항목", "현재 안"], G.POLICY, [24, 76], first_col_label=True)
+    d.add_heading("이상치 질문·답변 운영 기준 (안)", 1)
+    table(d, ["항목", "기준 (안)"], G.POLICY, [24, 76], first_col_label=True)
+    bullets(d, ["PoC 구현 범위에 포함. 기준의 확정은 To-Be 개발 방안의 확인 요청 19~21번 회신 후"])
     out = SEND / "재고배분_화면흐름_안내.docx"
     d.save(out)
     return out
