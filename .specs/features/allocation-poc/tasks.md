@@ -1375,7 +1375,7 @@ T86 → T87
 
 **Done when**:
 
-- [ ] 검증 실행이 완료되면 이상치(이동 건수 이상, 과다 이동, 미충전 부족분, 운영 버전 대비 건수 차이)가 종류·상품·내용·문의 대상과 함께 보인다 (C56)
+- [ ] 검증 실행이 완료되면 이상치(이동 건수 이상, 과다 이동, 미충전 부족분)가 종류·상품·내용·문의 대상과 함께 보인다 (C56)
 - [ ] Gate check passes: `pytest tests/unit -v`
 - [ ] Test count: `tests/unit/test_anomalies.py`에 이 작업의 테스트 1개 이상이 통과한다 (기존 테스트를 지우지 않는다)
 
@@ -2140,7 +2140,7 @@ Proof: run api | tests/api/test_compare.py::test_identical_results_show_no_diffe
 
 ### QA-01
 
-**C56** - 검증 실행이 완료되면 이상치(이동 건수 이상, 과다 이동, 미충전 부족분, 운영 버전 대비 건수 차이)가 종류·상품·내용·문의 대상과 함께 보인다 (QA-01, AC 1)
+**C56** - 검증 실행이 완료되면 이상치(이동 건수 이상, 과다 이동, 미충전 부족분)가 종류·상품·내용·문의 대상과 함께 보인다 (QA-01, AC 1)
 Proof: run unit | tests/unit/test_anomalies.py::test_anomalies_extracted_from_review_report PASSED
 
 **C57** - 질문 목록을 만들면 이상치마다 문의 대상(프로그램 작성자 또는 해당 점 바이어)과 질문 문안이 생긴다 (QA-01, AC 2)

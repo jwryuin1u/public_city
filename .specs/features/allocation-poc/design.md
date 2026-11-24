@@ -193,7 +193,7 @@ sequenceDiagram
 - **Interfaces**:
   - 입력: 결과 폴더의 검토리포트 (모니터1 이동건수 이상, 모니터2 과다 이동, 미충전 부족분)
   - 출력: 이상치 목록 (종류, 상품, 점, 내용). 실행 기록에 넣는다
-  - 운영 버전 대비 건수 차이는 비교가 필요하므로 `api/services/compare`가 더한다
+  - 프로그램 버전 사이의 결과 차이는 이상치가 아니다. 결과 비교(`api/services/compare`)에서 따로 보여준다
 - **Dependencies**: openpyxl
 - **Reuses**: 프로그램이 만드는 검토리포트 (추가 계산 없음)
 
