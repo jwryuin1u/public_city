@@ -232,9 +232,9 @@ for k, f, name, req, items in [
       [f"화면에 다음이 있다: {items}", "빈 목록, 처리 중, 오류, 권한 없음 상태가 각각 문구로 보인다"])
 
 # ---------- Phase 10: 이상치 질문·답변과 재테스트
-t("q1", 10, "이상치 추출", "결과 파일의 검토리포트에서 이상치(이동 건수 이상, 과다 이동, 미충전 부족분)를 뽑아 실행 기록에 넣는다", "`runner/anomalies.py`",
-  [], "검토리포트 엑셀의 모니터1·모니터2·미충전 부족분 시트", "QA-01", "unit", "test_anomalies.py",
-  [("QA-01", 1, "검증 실행이 완료되면 이상치(이동 건수 이상, 과다 이동, 미충전 부족분)가 종류·상품·내용·문의 대상과 함께 보인다", "test_anomalies_extracted_from_review_report")])
+t("q1", 10, "이상치 추출", "결과 파일의 검토리포트에서 이상치(이동 건수 이상, 과다 이동)를 뽑아 실행 기록에 넣는다", "`runner/anomalies.py`",
+  [], "검토리포트 엑셀의 모니터1·모니터2 시트", "QA-01", "unit", "test_anomalies.py",
+  [("QA-01", 1, "검증 실행이 완료되면 이상치(이동 건수 이상, 과다 이동)가 종류·상품·내용·문의 대상과 함께 보인다", "test_anomalies_extracted_from_review_report")])
 t("q2", 10, "임시 제외 반영", "지시서의 임시 제외 상품을 제외·전용 SKU 마스터의 사본에 추가해 작업 폴더에 놓는다", "`runner/workspace.py` (수정)",
   [], "b3, 제외·전용 SKU 엑셀의 양수도제외상품·온오프전환제외상품 시트", "QA-01", "unit", "test_workspace.py",
   [("QA-01", 11, "이동 제외 답변은 제외·전용 SKU 마스터의 임시 사본에만 추가되고 등록된 마스터 버전은 그대로다", "test_temp_exclusion_does_not_change_master")])

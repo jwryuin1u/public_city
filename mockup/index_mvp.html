@@ -152,10 +152,8 @@ const ERP_FILES = [['재고전환_온오프','명동본점'],['재고전환_온�
 const ANOMS = [
  {no:'Q-01',kind:'과다 이동',to:'바이어 · 인천공항T1',who:'buyer',code:'2000000052',name:'브랜드 C1 상품 4',detail:'인천공항T2 → 인천공항T1 42개 이동. 판매 18일치 (경고 기준 10일치)',q:'인천공항T1에 이 상품 42개가 필요합니까? 행사나 단체 예약 같은 사유가 있으면 적어 주세요.',opts:['정상','이동 제외'],adj:{move:-1}},
  {no:'Q-02',kind:'이동 건수 이상',to:'프로그램 작성자',who:'author',code:'2000000003',name:'브랜드 A1 상품 3',detail:'한 상품에 이동 지시 9건 (상품 평균 2.1건). 3개 이하 소량 이동이 6건',q:'소량 이동이 여러 번 생겼습니다. 최소 보충 수량을 3에서 5로 올려 다시 돌려 볼까요?',opts:['정상','파라미터 조정','로직 수정'],fix:{key:'hyst_min_qty',val:5,label:'최소 보충 수량 3 → 5'}},
- {no:'Q-03',kind:'미충전',to:'바이어 · 제주',who:'buyer',code:'2000000101',name:'브랜드 E1 상품 5',detail:'제주 부족분 24개. 같은 양수도 그룹 안에 내줄 재고가 없음',q:'부족분 24개를 발주로 채웁니까? 다른 방법이 필요하면 기타를 고르고 적어 주세요.',opts:['정상','기타']},
- {no:'Q-04',kind:'전일 대비 급변',to:'바이어 · 월드타워',who:'buyer',code:'2000000066',name:'브랜드 C3 상품 6',detail:'월드타워 → 온라인 전환 31개. 전일 0개',q:'온라인으로 31개를 전환해도 됩니까? 매장 행사 등으로 오프라인에 남겨야 하면 이동 제외를 골라 주세요.',opts:['정상','이동 제외'],adj:{conv:-1}},
- {no:'Q-05',kind:'과다 이동',to:'바이어 · 제주공항',who:'buyer',code:'2000000079',name:'브랜드 D1 상품 1',detail:'인천공항T1 → 제주공항 36개 이동. 판매 14일치 (경고 기준 10일치)',q:'제주공항에서 이 상품 36개를 받을 수 있습니까?',opts:['정상','이동 제외'],adj:{move:-1}},
- {no:'Q-06',kind:'운영 버전과 차이',to:'프로그램 작성자',who:'author',code:'—',name:'전체',detail:'미충전 부족분 건수가 운영 버전과 다름',q:'수정한 의도와 맞는 변화입니까?',opts:['정상','로직 수정']}];
+ {no:'Q-03',kind:'과다 이동',to:'바이어 · 월드타워',who:'buyer',code:'2000000066',name:'브랜드 C3 상품 6',detail:'명동본점 → 월드타워 28개 이동. 판매 13일치 (경고 기준 10일치)',q:'월드타워에서 이 상품 28개를 받아도 됩니까? 받지 않으려면 이동 제외를 골라 주세요.',opts:['정상','이동 제외'],adj:{move:-1}},
+ {no:'Q-04',kind:'과다 이동',to:'바이어 · 제주공항',who:'buyer',code:'2000000079',name:'브랜드 D1 상품 1',detail:'인천공항T1 → 제주공항 36개 이동. 판매 14일치 (경고 기준 10일치)',q:'제주공항에서 이 상품 36개를 받을 수 있습니까?',opts:['정상','이동 제외'],adj:{move:-1}}];
 const QCOLS = ['질문번호','받는 사람','상품코드','상품명','이상 내용','질문','답변 선택','답변 내용'];
 const PERM = {register:['user'],testrun:['user'],promote:['user'],decide:['it'],master:['md'],input:['sop'],prodrun:['sop'],approve:['sop'],download:['sop'],ask:['user'],retest:['user']};
 
@@ -252,7 +250,7 @@ function planLines(p){
 function anomCard(r){
   const qs=qsetOf(r.id); const re=!!r.applied;
   const st=ANOMS.map(a=>anomState(r,a)); const left=st.filter(x=>x==='남음').length;
-  return `<div class="card"><h3>이상치 ${re?`<span class="note">재테스트 결과: 해소 ${st.filter(x=>x==='해소').length} · 확인됨 ${st.filter(x=>x==='확인됨').length} · 남음 ${left}</span>`:`${ANOMS.length}건 <span class="note">검토리포트의 경고와 운영 버전 대비 변화에서 찾은 항목</span>`}</h3>
+  return `<div class="card"><h3>이상치 ${re?`<span class="note">재테스트 결과: 해소 ${st.filter(x=>x==='해소').length} · 확인됨 ${st.filter(x=>x==='확인됨').length} · 남음 ${left}</span>`:`${ANOMS.length}건 <span class="note">검토리포트의 경고(이동 건수 이상, 과다 이동)에서 찾은 항목</span>`}</h3>
   <table><tr><th>종류</th><th>상품</th><th>내용</th><th>물어볼 사람</th><th>상태</th></tr>
   ${ANOMS.map((a,i)=>`<tr><td>${a.kind}</td><td>${a.code}<br><span class="note">${a.name}</span></td><td>${a.detail}${re&&r.applied[a.no]?`<br><span class="note">답변: ${r.applied[a.no].choice} — ${r.applied[a.no].text||''}</span>`:''}</td><td>${a.to}</td><td>${chip(st[i])}</td></tr>`).join('')}</table>
   ${re?(left?'<div class="msg warn">남은 이상치가 있습니다. 질문 목록을 다시 만들어 한 번 더 확인할 수 있습니다.</div>':'<div class="msg ok">이상치가 모두 해소되거나 사유가 확인되었습니다.</div>'):''}
@@ -514,7 +512,7 @@ document.addEventListener('click', async e=>{
     const el=document.createElement('a'); el.href=URL.createObjectURL(new Blob(['﻿'+rows.map(r=>r.join(',')).join('\n')+'\n'],{type:'text/csv'})); el.download='질문목록_'+QS.run+'.csv'; el.click();
     toast('질문목록_'+QS.run+'.csv 내려받기. 답변 선택과 답변 내용 칸을 채워 다시 올릴 수 있습니다'); return;
   }
-  if(t.id==='btnQSend'){ QS.state='보냄'; QS.sentAt=now(); render(); toast('받는 사람 5명에게 질문을 보냈습니다'); return }
+  if(t.id==='btnQSend'){ QS.state='보냄'; QS.sentAt=now(); render(); toast('받는 사람 '+new Set(ANOMS.map(a=>a.to)).size+'명에게 질문을 보냈습니다'); return }
   if(t.id==='btnQSave'){
     let k=0; document.querySelectorAll('[data-qa-choice]').forEach(el=>{ if(el.value){ const no=el.dataset.qaChoice, a=ANOMS.find(x=>x.no===no);
       QS.ans[no]={choice:el.value,text:document.querySelector(`[data-qa-text="${no}"]`).value.trim(),by:a.to,at:now()}; k++ }});

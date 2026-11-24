@@ -119,7 +119,7 @@ async function registerAndRun(page, shot) {
   await page.waitForTimeout(250);
   await shot('S3_실행중', '실행하면 입력 검증 → 프로그램 실행 → 규칙 확인 → 기록 저장 순으로 진행된다');
   await page.waitForSelector('#btnPromote:not([disabled])');
-  await shot('S3_검증결과_이상치', 'S3 검증 결과. 운영 버전과의 건수 차이, 규칙 5개, 이상치 6건, 달라진 SKU가 보인다');
+  await shot('S3_검증결과_이상치', 'S3 검증 결과. 운영 버전과의 건수 차이, 규칙 5개, 이상치 4건, 달라진 SKU가 보인다');
 }
 
 // 이상치 → 질문 목록 → 보내기 → 답변 받기 → 재테스트

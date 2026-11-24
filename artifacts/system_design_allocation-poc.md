@@ -143,7 +143,7 @@ sequenceDiagram
     participant B as 바이어·작성자
     participant RUN as 실행기 (검증용)
 
-    Note over API: 검증 실행 완료 시 이상치 표시 (검토리포트 경고, 미충전)
+    Note over API: 검증 실행 완료 시 이상치 표시 (검토리포트 경고 2종)
     U->>API: [질문 목록 만들기]
     API->>API: 이상치마다 문의 대상과 질문 문안 지정
     U->>API: 질문 목록 내려받기(CSV) 또는 [질문 보내기]
