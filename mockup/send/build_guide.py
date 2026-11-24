@@ -148,7 +148,7 @@ def build_pdf():
     B = [f"<h1>{e(TITLE)}</h1>", "<ul class=intro>" + "".join(f"<li>{e(x)}</li>" for x in INTRO) + "</ul>",
          "<h2>접속 역할별 메뉴</h2>", table(["접속 역할", "표시 메뉴", "가능한 작업"], ROLES),
          "<ul class=intro><li>사내 계정 로그인 후 역할에 해당하는 메뉴만 표시</li><li>역할에 없는 기능은 화면과 서버 양쪽에서 차단</li></ul>",
-         "<h2>화면 흐름</h2>"]  # 화면 구성 표는 PDF에 넣지 않는다 (md에만 있다)
+         "<h2 class=flow>화면 흐름</h2>"]  # 화면 구성 표는 PDF에 넣지 않는다 (md에만 있다)
     n = 0
     for sec, steps in FLOW:
         B.append(f"<h3>{e(sec)}</h3>")
