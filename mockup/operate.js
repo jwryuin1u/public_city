@@ -21,7 +21,7 @@ const PAUSE = SLOW ? 1700 : 900;
 
 async function session(browser, videoName, body) {
   const ctx = await browser.newContext({
-    viewport: { width: 1360, height: 860 }, deviceScaleFactor: 2, locale: 'ko-KR',
+    viewport: { width: 1360, height: 860 }, deviceScaleFactor: 2, locale: 'ko-KR', timezoneId: 'Asia/Seoul',
     recordVideo: { dir: OUT, size: { width: 1360, height: 860 } },
   });
   if (SLOW) {
@@ -98,6 +98,10 @@ async function session(browser, videoName, body) {
 }
 
 const go = (page, p) => page.click(`nav button[data-page="${p}"]`);
+// 접속 역할을 바꾼다 (mvp 화면은 역할에 해당하는 메뉴만 보인다)
+const as = (page, role) => page.selectOption('#role', role);
+// 대상 카테고리가 빠진 입력 일자
+const PARTIAL = VARIANT === 'mvp' ? '20261111' : '20260813';
 
 // 수정본 등록 → 검증 실행 → 결과
 async function registerAndRun(page, shot) {
@@ -110,7 +114,7 @@ async function registerAndRun(page, shot) {
   await page.selectOption('#tDate', '20261116');
   await page.fill('#p_min_days', '4');
   await page.dispatchEvent('#p_min_days', 'change');
-  await shot('S2_검증실행_설정', 'S2 검증 실행. 버전, 입력 일자를 고르고 최소보장일수를 5에서 4로 바꿔 본다 (이 실행에만 적용)');
+  await shot('S2_검증실행_설정', 'S2 검증 실행. 버전, 입력 일자를 고르고 최소보장일수를 4로 바꿔 본다 (이 실행에만 적용)');
   await page.click('#btnTestRun');
   await page.waitForTimeout(250);
   await shot('S3_실행중', '실행하면 입력 검증 → 프로그램 실행 → 규칙 확인 → 기록 저장 순으로 진행된다');
@@ -128,11 +132,14 @@ async function questionLoop(page, shot) {
   await page.click('#btnQSend');
   await shot('Q_보냄_답변대기', '질문 목록을 파일로 내려받거나 받는 사람에게 보낸다. 보낸 뒤에는 답변 칸이 열린다');
 
+  await as(page, 'buyer');
+  await shot('Q_바이어_접속', '바이어로 접속하면 질문·답변 메뉴만 보이고 자기에게 온 질문에만 답할 수 있다');
   await page.selectOption('select[data-qa-choice="Q-01"]', '정상');
   await page.fill('input[data-qa-text="Q-01"]', '11/20 단체 예약 40개가 있어 필요함');
   await page.click('#btnQSave');
   await shot('Q_화면에서_답변', '답변 방법 1: 받는 사람이 화면에서 직접 고르고 적는다 (인천공항T1 바이어의 답변)');
 
+  await as(page, 'user');
   await page.setInputFiles('#qaFile', D('answers', '질문목록_답변일부_선택오류.csv'));
   await page.click('#btnQUp');
   await shot('Q_답변파일_선택오류', '답변 방법 2: 답변이 적힌 파일을 올린다. 쓸 수 없는 답변 선택이 있으면 그 줄을 알려 준다');
@@ -166,6 +173,7 @@ async function questionLoop(page, shot) {
     };
 
     shot.part = 'A';
+    await as(page, 'user');
     await shot('S1_처음', 'S1 내 프로그램 버전. 운영본 v0.3 하나가 운영 중이다');
     await page.setInputFiles('#codeFile', D('code', 'pipeline_문법오류.py'));
     await page.click('#btnRegister');
@@ -181,10 +189,10 @@ async function questionLoop(page, shot) {
 
     shot.part = 'C';
     await go(page, 's2');
-    await page.selectOption('#tDate', '20260813');
+    await page.selectOption('#tDate', PARTIAL);
     await page.click('#btnTestRun');
     await page.waitForSelector('.msg.bad');
-    await shot('S3_0813_입력실패', '부분 추출된 0813 입력을 고르면 입력 검증에서 멈춘다. 빠진 카테고리 이름이 보이고 결과 파일은 없다');
+    await shot('S3_카테고리누락_입력실패', '대상 카테고리가 빠진 입력을 고르면 입력 검증에서 멈춘다. 빠진 카테고리 이름이 보이고 결과 파일은 없다');
 
     await go(page, 's1');
     await page.setInputFiles('#codeFile', D('code', 'pipeline_규칙위반.py'));
@@ -200,14 +208,16 @@ async function questionLoop(page, shot) {
     const okRun = await page.evaluate(() => S.runs.find((r) => r.ver === 'V-002' && r.status === '완료').id);
     await page.selectOption('#pickRun', okRun);
     await page.click('#btnPromote');
+    await as(page, 'it');
     await go(page, 's4');
     await page.waitForSelector('button[data-approve]:not([disabled])');
-    await shot('S4_회귀결과', 'S4 운영 반영 승인. 재테스트까지 마친 버전을 요청하면 0812 기준 입력으로 회귀 테스트가 돈다');
+    await shot('S4_회귀결과', 'IT혁신팀으로 접속. S4 운영 반영 승인. 기준 입력으로 돌린 회귀 테스트 결과를 보고 승인한다');
     await page.fill('input[id^="opinion_"]', '회귀 결과 확인. 반영 승인');
     await page.click('button[data-approve]');
     await shot('S4_승인됨', '승인하면 수정본이 운영 버전이 되고 이전 운영본은 보관된다. 되돌리기도 할 수 있다');
 
     shot.part = 'D';
+    await as(page, 'md');
     await go(page, 's5');
     await page.setInputFiles('#mFile', D('master', '양수도제외브랜드상품_20261112_시트누락.xlsx'));
     await page.click('#btnMaster');
@@ -216,6 +226,7 @@ async function questionLoop(page, shot) {
     await page.click('#btnMaster');
     await shot('S5_마스터_새버전', '온전한 파일은 새 버전(v6)으로 보관된다. 이전 버전은 남아 있다');
 
+    await as(page, 'sop');
     await go(page, 's6');
     await shot('S6_입력상태_처음', 'S6 입력 상태. 판매예측과 코드표는 자동 수집됐고, 재고는 파일을 기다린다');
     await page.setInputFiles('#invFile', D('input', '상태별재고조회(SKU)_합본_20261117_부분추출.csv'));
@@ -228,7 +239,7 @@ async function questionLoop(page, shot) {
     await go(page, 's7');
     await page.click('#btnProdRun');
     await page.waitForSelector('#btnContinue');
-    await shot('S7_확인대기', 'S7 운영 실행. 공헌이익 파일이 오래되어 확인대기로 멈춘다. 담당자가 확인해야 진행된다');
+    await shot('S7_확인대기', 'S7 운영 실행. 판매예측 파일이 갱신 주기를 넘어 확인대기로 멈춘다. 담당자가 확인해야 진행된다');
     await page.click('#btnContinue');
     await page.waitForSelector('#btnApprove');
     await shot('S7_운영결과', '실행이 끝나면 요약 건수, 전일 대비 차이, 규칙 5개, 구간별 걸린 시간이 보인다');
@@ -246,6 +257,7 @@ async function questionLoop(page, shot) {
   // ===== 질문·답변과 재테스트만 담은 짧은 영상 =====
   const errors2 = await session(browser, 'demo_질문답변.webm', async (page) => {
     const wait = async () => { await page.idle(); await page.waitForTimeout(SLOW ? 2000 : 1400); };
+    await as(page, 'user');
     await wait();
     await registerAndRun(page, wait);
     await page.evaluate(() => document.querySelector('#btnMakeQ').scrollIntoView({ block: 'center' }));

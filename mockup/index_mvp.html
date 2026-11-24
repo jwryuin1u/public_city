@@ -110,14 +110,14 @@ code{font-family:var(--mono);font-size:13px;background:#fff;border:1px solid var
   <h1>재고배분 실행·검증</h1>
   <span class="tag mono">v0.1</span>
   <span class="sp"></span>
-  <label for="role">역할</label>
+  <label for="role">접속 역할</label>
   <select id="role">
-    <option value="all">관리자 (모든 역할)</option>
     <option value="user">현업 사용자</option>
-    <option value="sop">S&amp;OP 담당자</option>
-    <option value="md">MD</option>
-    <option value="it">IT혁신팀</option>
     <option value="buyer">바이어 (점별 재고 신청자)</option>
+    <option value="it">IT혁신팀</option>
+    <option value="md">MD</option>
+    <option value="sop">S&amp;OP 담당자</option>
+    <option value="all">관리자 (모든 역할)</option>
   </select>
   <button class="btn" id="reset">초기화</button>
 </header>
@@ -131,18 +131,18 @@ code{font-family:var(--mono);font-size:13px;background:#fff;border:1px solid var
 <script>
 // ---------- 기준 데이터 ----------
 const TODAY = '20261117';
-const CATS = ['COS and PFM','JEW and WATCH','LIQUOR and TOBACCO','ACC and GIFT','FOOD','ELECTRONICS'];
+const CATS = ['COS and PFM','LIQUOR and TOBACCO','FOOD']; // 등록된 대상 카테고리
 const STORES = ['명동본점','월드타워','부산','제주','인천공항T1','인천공항T2','김해공항','김포공항','김포공항B','제주공항'];
 const KNOWN = {1:'창고',2:'점',5:'상품코드',6:'재고 관리유형',7:'재고 관리년월',8:'반입년월',11:'상품명',12:'Category',13:'Brand',17:'매가($)',22:'가용_일반가용',23:'가용_온라인 일반가용',68:'선하증권관리ID',69:'발주번호',70:'코너',71:'source_file'};
 const BASE_COLS = Array.from({length:72},(_,i)=>KNOWN[i]||('미사용_'+String(i).padStart(2,'0')));
 const COUNT_LABELS = ['배분 검토 상품','점간 이동 지시','온·오프 전환 지시','미충전 부족분','발주 검토 대상'];
 const RULES = ['총량 보존','최소보장','그룹 내 이동','발송 한도','전환 한도'];
-const BASE = {'20260812':[21912,214,37,688,6105],'20261116':[21744,198,31,652,6020],'20261117':[21803,207,34,671,6077]};
+const BASE = {'20261110':[21912,214,37,688,6105],'20261116':[21744,198,31,652,6020],'20261117':[21803,207,34,671,6077]};
 const PARAMS = [
-  ['base_doi','기본커버일수',7,1,60],['min_days','결품방지 최소보장일수',5,1,30],['hyst_min_qty','최소 보충 수량',3,0,50],
+  ['base_doi','기본커버일수',7,1,60],['min_days','결품방지 최소보장일수',3,1,30],['hyst_min_qty','최소 보충 수량',3,0,50],
   ['online_mfg_max_months','제조 경과 제외 기준(개월)',21,0,60],['online_exp_min_months','유효기한 임박 제외 기준(개월)',6,0,24],
   ['transfer_mfg_max_months','반입 경과 제외 기준(개월)',22,0,60]];
-const FIXED_PARAMS = '프리미엄 0/0/0 · 이동생략 0.0 · 통물 한정 켬 · 점센터 보호 3 · 경고 민감도 2.0 · 과다 이동 10 · 미등록 브랜드 양수도 제외 · 헤더 행 2';
+const FIXED_PARAMS = '프리미엄 0/0/0 · 이동생략 0.0 · 통물 한정 끔 · 점센터 보호 3 · 경고 민감도 2.0 · 과다 이동 10 · 미등록 브랜드 양수도 제외 · 헤더 행 2 · 점센터 이동 제외 점 인천공항T1·T2 · 점센터 이동 제외 카테고리 EYEWEAR';
 const SKU_POOL = [['2000000003','브랜드 A1 상품 3','COS and PFM'],['2000000017','브랜드 A3 상품 5','COS and PFM'],['2000000031','브랜드 B2 상품 1','JEW and WATCH'],
   ['2000000052','브랜드 C1 상품 4','LIQUOR and TOBACCO'],['2000000058','브랜드 C2 상품 4','LIQUOR and TOBACCO'],['2000000066','브랜드 C3 상품 6','LIQUOR and TOBACCO'],
   ['2000000079','브랜드 D1 상품 1','ACC and GIFT'],['2000000090','브랜드 D2 상품 6','ACC and GIFT'],['2000000101','브랜드 E1 상품 5','FOOD'],
@@ -164,19 +164,18 @@ let S;
 function init(){
   const p = {}; PARAMS.forEach(x=>p[x[0]]=x[2]);
   S = {
-    page:'s1', role:'all', seq:3, viewRun:null,
-    versions:[{id:'V-001',name:'운영본 v0.3',memo:'현행 PC 운영 소스 (1,764줄)',kind:'prod',status:'운영',by:'S&OP 담당자',at:'2026-11-10 14:02',file:'pipeline_운영본_v0.3.py'}],
+    page:'s1', role:'user', seq:3, viewRun:null,
+    versions:[{id:'V-001',name:'운영본 v0.3',memo:'현행 PC 운영 소스 (2,102줄)',kind:'prod',status:'운영',by:'S&OP 담당자',at:'2026-11-10 14:02',file:'pipeline_운영본_v0.3.py'}],
     prodParams:p,
     masters:[{kind:'양수도 그룹',ver:3,file:'브랜드양수도그룹관리_20261105.csv',by:'MD',at:'2026-11-05 16:40'},{kind:'제외·전용 SKU',ver:5,file:'양수도제외브랜드상품_20261109.xlsx',by:'MD',at:'2026-11-09 11:12'}],
     inputs:{
       '20261117':{state:'수집 중',note:'재고는 기간계 접근 승인 전이라 파일로 올립니다',continued:false,files:[
         ['재고 스냅샷','','파일 필요','—','—','wait'],
-        ['판매예측','일예상판매수량_20261116.xlsx','자동 수집 (ADF)','11-16 06:10','1,005','ok'],
-        ['공헌이익','채널별상품공헌이익_202609.csv','올린 파일','10-02 09:30','1,440','warn'],
+        ['판매예측','일예상판매수량_20261109.xlsx','자동 수집 (ADF)','11-09 06:10','1,005','warn'],
         ['코드표 5종','점코드_ 외 4개','자동 수집 (ADF)','11-17 08:40','289','ok']]},
-      '20261116':{state:'준비됨',files:[]}, '20260812':{state:'준비됨',note:'회귀 기준 (전체 추출)',files:[]},
-      '20260813':{state:'준비됨',note:'부분 추출 사례',partial:true,files:[]}},
-    runs:[{id:'R-0002',mode:'운영',ver:'V-001',date:'20261116',params:{...p},by:'S&OP 담당자',at:'2026-11-16 09:02',dur:'6분 08초',status:'승인됨',counts:BASE['20261116'],rules:[0,0,0,0,0],approvedBy:'S&OP 담당자',approvedAt:'2026-11-16 09:31',masters:'그룹 v3 · 제외 v5'}],
+      '20261116':{state:'준비됨',files:[]}, '20261110':{state:'준비됨',note:'기준 입력 (회귀 테스트용)',files:[]},
+      '20261111':{state:'준비됨',note:'대상 카테고리 누락 예시',partial:true,files:[]}},
+    runs:[{id:'R-0002',mode:'운영',ver:'V-001',date:'20261116',params:{...p},by:'S&OP 담당자',at:'2026-11-16 09:02',dur:'1분 07초',status:'승인됨',counts:BASE['20261116'],rules:[0,0,0,0,0],approvedBy:'S&OP 담당자',approvedAt:'2026-11-16 09:31',masters:'그룹 v3 · 제외 v5'}],
     promos:[], qsets:[], viewQ:null
   };
 }
@@ -224,13 +223,13 @@ function step(r, skipWait){
   const tick = (ms,fn)=>setTimeout(()=>{fn();render()}, ms);
   r.stage=0;
   tick(STAGE_MS[0], ()=>{ // 입력 검증
-    if(inp.partial){r.status='입력실패';r.fail='재고에 없는 카테고리: COS and PFM, FOOD';r.dur='0분 21초';return}
-    r.inputWarn = (r.date===TODAY)?'공헌이익 파일이 갱신 주기(35일)를 넘었습니다 (수집 10-02, 46일 경과)':null;
+    if(inp.partial){r.status='입력실패';r.fail='재고에 없는 대상 카테고리: FOOD';r.dur='0분 21초';return}
+    r.inputWarn = (r.date===TODAY)?'판매예측 파일이 갱신 주기(7일)를 넘었습니다 (수집 11-09, 8일 경과)':null;
     if(r.mode==='운영' && r.inputWarn && !skipWait){r.status='확인대기';return}
     r.stage=1;
     tick(STAGE_MS[1], ()=>{ r.stage=2; tick(STAGE_MS[2], ()=>{ r.stage=3; tick(STAGE_MS[3], ()=>{
       const res = calc(ver(r.ver), r.date, r.params, r.adj);
-      r.counts=res.counts; r.rules=res.rules; r.dur = r.date==='20260812'?'6분 31초':'6분 12초';
+      r.counts=res.counts; r.rules=res.rules; r.dur = r.date==='20261110'?'1분 09초':'1분 06초';
       r.status = res.rules.some(x=>x>0)?'규칙위반':'완료'; r.stage=4;
     })})});
   });
@@ -265,10 +264,13 @@ function compareOf(r){ return r.compare ? run(r.compare) : null }
 const NAV = [['검증 실행',[['s1','S1','내 프로그램 버전'],['s2','S2','검증 실행'],['s3','S3','검증 결과'],['qa','Q','질문·답변'],['s4','S4','운영 반영 승인']]],
              ['운영 실행',[['s5','S5','마스터 데이터'],['s6','S6','입력 상태'],['s7','S7','운영 실행·결과'],['s8','S8','결과 내려받기']]],
              ['기록',[['hist','','실행 이력']]]];
+// 역할별로 볼 수 있는 화면
+const MENU = {user:['s1','s2','s3','qa','hist'], buyer:['qa'], it:['s4','hist'], md:['s5'], sop:['s6','s7','s8','hist']};
+const allowed = pg => S.role==='all' || MENU[S.role].includes(pg);
 function renderNav(){
   const pend = S.promos.filter(p=>p.status==='승인 대기').length;
   const wait = S.qsets.filter(q=>q.state==='보냄').reduce((n,q)=>n+ANOMS.length-Object.keys(q.ans).length,0);
-  $('#nav').innerHTML = NAV.map(g=>`<h2>${g[0]}</h2>`+g[1].map(i=>`<button data-page="${i[0]}" class="${S.page===i[0]?'on':''}"><span class="n">${i[1]}</span>${i[2]}${i[0]==='s4'&&pend?`<span class="dot">${pend}</span>`:''}${i[0]==='qa'&&wait?`<span class="dot">${wait}</span>`:''}</button>`).join('')).join('');
+  $('#nav').innerHTML = NAV.map(g=>[g[0],g[1].filter(i=>allowed(i[0]))]).filter(g=>g[1].length).map(g=>`<h2>${g[0]}</h2>`+g[1].map(i=>`<button data-page="${i[0]}" class="${S.page===i[0]?'on':''}"><span class="n">${i[1]}</span>${i[2]}${i[0]==='s4'&&pend?`<span class="dot">${pend}</span>`:''}${i[0]==='qa'&&wait?`<span class="dot">${wait}</span>`:''}</button>`).join('')).join('');
 }
 function countsCards(r, base, ref='비교 대상'){
   return `<div class="grid5">`+COUNT_LABELS.map((l,i)=>{
@@ -314,7 +316,7 @@ P.s2 = ()=>`<h2>검증 실행</h2><p class="lead">고친 프로그램을 과거 
  <div class="field"><span>비교 대상</span><select id="tCmp"><option>운영 버전 + 운영 파라미터 (같은 입력, 같은 날 실행)</option></select></div></div></div>
 <div class="card"><h3>파라미터</h3><div class="params">
  ${PARAMS.map(p=>`<div class="field"><span>${p[1]} <span class="same">(운영값 ${S.prodParams[p[0]]}, 범위 ${p[3]}~${p[4]})</span></span><input type="number" id="p_${p[0]}" value="${S.prodParams[p[0]]}" min="${p[3]}" max="${p[4]}"></div>`).join('')}</div>
- <p class="note">나머지 8개는 운영값 그대로: ${FIXED_PARAMS}</p>
+ <p class="note">나머지 10개는 운영값 그대로: ${FIXED_PARAMS}</p>
  <div id="paramMsg"></div>
  <div class="row" style="margin-top:12px"><button class="btn pri" id="btnTestRun" ${dis('testrun')}>검증 실행</button></div></div>`;
 
@@ -337,7 +339,7 @@ P.s3 = ()=>{
       <div class="row"><button class="btn" data-dl="양수도_명동본점_${r.date}" data-test="1">TEST_양수도_명동본점</button><button class="btn" data-dl="검토리포트_${r.date}" data-test="1">TEST_검토리포트</button></div>
       <h3 style="margin-top:16px">운영 반영</h3>
       ${v.status==='운영'?'<p class="note">이 버전은 이미 운영 버전입니다.</p>':v.status==='승인 대기'?'<div class="msg info">운영 반영을 요청했습니다. IT혁신팀의 승인을 기다립니다 (S4).</div>':
-        `<button class="btn pri" id="btnPromote" data-run="${r.id}" ${r.status!=='완료'?'disabled':dis('promote')}>운영 반영 요청</button><p class="note">요청하면 0812 기준 입력으로 회귀 테스트가 자동으로 돕니다.</p>`}</div></div>
+        `<button class="btn pri" id="btnPromote" data-run="${r.id}" ${r.status!=='완료'?'disabled':dis('promote')}>운영 반영 요청</button><p class="note">요청하면 기준 입력으로 회귀 테스트가 자동으로 돕니다.</p>`}</div></div>
     ${r.parent?`<div class="card"><h3>재테스트 <span class="note">${r.parent}의 질문에 대한 답변을 반영했습니다</span></h3><ul class="plan">${planLines(planOf({ans:r.applied})).map(l=>`<li>${l}</li>`).join('')}</ul>
       <p class="note">이동 제외는 이번 재테스트에만 적용됩니다. 계속 적용하려면 MD가 제외·전용 SKU 마스터에 반영해야 합니다 (S5). 파라미터 변경을 운영에 쓰려면 운영 파라미터 변경 승인이 필요합니다.</p></div>`:''}
     ${anomCard(r)}
@@ -378,8 +380,8 @@ P.qa = ()=>{
 P.s4 = ()=>`<h2>운영 반영 승인</h2><p class="lead">회귀 테스트 결과를 보고 새 버전을 운영에 쓸지 정합니다. 승인하면 다음 운영 실행부터 새 버전이 쓰입니다.</p>
 ${S.promos.length?S.promos.map(p=>{const v=ver(p.ver), a=run(p.runNew), b=run(p.runProd); const done=a.counts&&b.counts;
   return `<div class="card"><h3>${v.name} <span class="note">(${v.id}) · 요청 ${p.by} ${p.at}</span> ${chip(p.status)}</h3><p class="note">메모: ${v.memo}</p>
-  ${!done?'<p class="note">회귀 테스트 실행 중 · 0812 기준 입력으로 새 버전과 현재 운영 버전을 함께 돌립니다</p>':
-  `<div class="two"><div><h3>회귀 테스트 · 0812 기준 입력</h3><table><tr><th></th><th class="num">현재 운영 버전</th><th class="num">새 버전</th><th class="num">차이</th></tr>
+  ${!done?'<p class="note">회귀 테스트 실행 중 · 기준 입력으로 새 버전과 현재 운영 버전을 함께 돌립니다</p>':
+  `<div class="two"><div><h3>회귀 테스트 · 기준 입력</h3><table><tr><th></th><th class="num">현재 운영 버전</th><th class="num">새 버전</th><th class="num">차이</th></tr>
    ${COUNT_LABELS.map((l,i)=>`<tr><td>${l}</td><td class="num">${fmt(b.counts[i])}</td><td class="num">${fmt(a.counts[i])}</td><td class="num">${a.counts[i]-b.counts[i]===0?'<span class="same">0</span>':(a.counts[i]-b.counts[i]>0?'+':'')+fmt(a.counts[i]-b.counts[i])}</td></tr>`).join('')}</table></div>
    <div><h3>새 버전의 업무 규칙</h3>${rulesTable(a)}</div></div>
    ${p.status==='승인 대기'?`<div class="row" style="margin-top:12px"><div class="field"><span>의견</span><input type="text" id="opinion_${p.id}" style="width:320px" placeholder="반려할 때는 사유를 적습니다"></div>
@@ -402,9 +404,9 @@ P.s6 = ()=>{ const i=S.inputs[TODAY]; const w = S.runs.find(r=>r.mode==='운영'
  <table><tr><th>입력</th><th>파일</th><th>출처</th><th>수집 시각</th><th class="num">행 수</th><th>상태</th></tr>
  ${i.files.map(f=>`<tr><td>${f[0]}</td><td>${f[1]||'—'}</td><td>${f[2]}</td><td>${f[3]}</td><td class="num">${f[4]}</td><td>${f[5]==='ok'?chip('통과'):f[5]==='warn'?chip('경고'):f[5]==='bad'?chip('실패'):'<span class="st c-mute"><i></i>대기</span>'}</td></tr>`).join('')}</table>
  ${i.result||''}
- <div class="msg warn">공헌이익 파일이 갱신 주기(35일)를 넘었습니다. 운영 실행은 담당자가 [실행 계속]을 눌러야 진행됩니다.</div>
+ <div class="msg warn">판매예측 파일이 갱신 주기(7일)를 넘었습니다 (이번 주 수집분 없음). 운영 실행은 담당자가 [실행 계속]을 눌러야 진행됩니다.</div>
  ${w?`<div class="row"><button class="btn pri" id="btnContinue" data-run="${w.id}" ${dis('input')}>실행 계속 (${w.id})</button></div>`:''}</div>
-<div class="card"><h3>재고 파일 올리기</h3><p class="note">${i.note}. 올리면 실제로 파일을 읽어 컬럼 72개, 카테고리 6개, 점 10개를 확인합니다.</p>
+<div class="card"><h3>재고 파일 올리기</h3><p class="note">${i.note}. 올리면 파일을 읽어 컬럼 72개, 대상 카테고리 3개(COS and PFM, LIQUOR and TOBACCO, FOOD), 점 10개를 확인합니다.</p>
  <div class="row"><div class="field"><span>재고 합본 CSV</span>${fileField("invFile",".csv")}</div><button class="btn pri" id="btnInv" ${dis('input')}>올려서 확인</button>
  <button class="btn" id="btnRecollect" ${dis('input')}>재수집 요청</button></div></div>`};
 
@@ -416,15 +418,15 @@ P.s7 = ()=>{ const i=S.inputs[TODAY]; const list=S.runs.filter(r=>r.mode==='운�
   else { body+=`</div><div class="card"><h3>요약 건수 <span class="note">직전 운영 실행: ${prev.date}</span></h3>${countsCards(r,prev,'직전 운영')}</div>
    <div class="two"><div class="card"><h3>업무 규칙 5개</h3>${rulesTable(r)}</div>
    <div class="card"><h3>걸린 시간</h3><table><tr><th>구간</th><th>시각</th><th class="num">소요</th></tr>
-    <tr><td>수집 시작</td><td>08:40</td><td class="num">—</td></tr><tr><td>입력 준비됨</td><td>08:47</td><td class="num">7분</td></tr><tr><td>실행 시작</td><td>08:48</td><td class="num">1분</td></tr><tr><td>실행 종료</td><td>08:54</td><td class="num">6분</td></tr>
-    <tr><td>승인</td><td>${r.status==='승인됨'?'09:05':'—'}</td><td class="num">${r.status==='승인됨'?'11분':'—'}</td></tr></table>
+    <tr><td>수집 시작</td><td>08:40</td><td class="num">—</td></tr><tr><td>입력 준비됨</td><td>08:47</td><td class="num">7분</td></tr><tr><td>실행 시작</td><td>08:48</td><td class="num">1분</td></tr><tr><td>실행 종료</td><td>08:49</td><td class="num">1분</td></tr>
+    <tr><td>승인</td><td>${r.status==='승인됨'?'09:05':'—'}</td><td class="num">${r.status==='승인됨'?'16분':'—'}</td></tr></table>
     <p class="note">현행은 09:00에 시작해 10:30 안에 마칩니다.</p></div></div>
    <div class="card"><h3>승인</h3>${r.status==='승인됨'?`<div class="msg ok">승인됨 · ${r.approvedBy} ${r.approvedAt}. S8에서 ERP 업로드 파일을 내려받을 수 있습니다.</div>`:
     r.status==='규칙위반'?'<div class="msg bad">규칙 위반이 있어 승인할 수 없습니다.</div>':`<p class="note">결과를 확인했으면 승인합니다. 승인 전에는 ERP 업로드 파일을 내려받을 수 없습니다.</p><button class="btn pri" id="btnApprove" data-run="${r.id}" ${dis('approve')}>승인</button>`}</div>`}
  }
  return `<h2>운영 실행·결과</h2><p class="lead">승인된 운영 버전과 운영 파라미터로 오늘의 결과를 만듭니다.</p>
  <div class="card"><h3>오늘 실행</h3><table><tr><th>운영 버전</th><th>운영 파라미터</th><th>입력 묶음 (${TODAY})</th></tr>
-  <tr><td>${pv.id} · ${pv.name}</td><td>기본커버 ${S.prodParams.base_doi} · 최소보장 ${S.prodParams.min_days} · 최소보충 ${S.prodParams.hyst_min_qty} 외 11개</td><td>${chip(i.state)}</td></tr></table>
+  <tr><td>${pv.id} · ${pv.name}</td><td>기본커버 ${S.prodParams.base_doi} · 최소보장 ${S.prodParams.min_days} · 최소보충 ${S.prodParams.hyst_min_qty} 외 13개</td><td>${chip(i.state)}</td></tr></table>
   ${i.state!=='준비됨'?'<div class="msg bad">입력 묶음이 준비되지 않아 실행할 수 없습니다. S6 입력 상태에서 재고 파일을 올리세요.</div>':''}
   <div class="row" style="margin-top:10px"><button class="btn pri" id="btnProdRun" ${i.state!=='준비됨'?'disabled':dis('prodrun')}>지금 실행</button>
   <span class="note">수집이 끝나면 자동으로 시작하도록 설정할 수 있습니다</span></div></div>${body}`};
@@ -457,8 +459,8 @@ function busy(btn, ms){
 // ---------- 동작 ----------
 document.addEventListener('click', async e=>{
   const t = e.target.closest('button'); if(!t) return;
-  if(t.dataset.page){S.page=t.dataset.page;render();return}
-  if(t.id==='reset'){init();$('#role').value='all';render();toast('처음 상태로 돌렸습니다');return}
+  if(t.dataset.page){ if(allowed(t.dataset.page)){S.page=t.dataset.page;render()} return }
+  if(t.id==='reset'){init();$('#role').value='user';render();toast('처음 상태로 돌렸습니다');return}
   if(t.disabled||document.body.classList.contains('busy')) return;
   const wait = BUSY[t.id] || ((t.dataset.approve||t.dataset.reject||t.dataset.rollback)?600:(t.dataset.dl?300:0));
   if(wait) await busy(t, wait);
@@ -489,8 +491,8 @@ document.addEventListener('click', async e=>{
   }
   if(t.id==='btnPromote'){
     const r=run(t.dataset.run), v=ver(r.ver), pv=prodVer();
-    const a=startRun({mode:'회귀',ver:v.id,date:'20260812',params:S.prodParams,by:'시스템 (회귀)'});
-    const b=startRun({mode:'회귀',ver:pv.id,date:'20260812',params:S.prodParams,by:'시스템 (회귀)'});
+    const a=startRun({mode:'회귀',ver:v.id,date:'20261110',params:S.prodParams,by:'시스템 (회귀)'});
+    const b=startRun({mode:'회귀',ver:pv.id,date:'20261110',params:S.prodParams,by:'시스템 (회귀)'});
     v.status='승인 대기';
     S.promos.unshift({id:'P-'+(S.promos.length+1),ver:v.id,runNew:a.id,runProd:b.id,by:'현업 사용자',at:now(),status:'승인 대기'});
     render(); toast('운영 반영을 요청했습니다. 회귀 테스트가 시작됩니다 (S4)'); return;
@@ -547,7 +549,7 @@ document.addEventListener('click', async e=>{
     const cats=new Set(), stores=new Set(); for(let k=1;k<lines.length;k++){const c=lines[k].split(',');cats.add(c[12]);stores.add(c[2])}
     const colBad=head.length!==72?`컬럼 수가 ${head.length}개입니다 (기준 72개)`:(()=>{const x=head.findIndex((h,k)=>h!==BASE_COLS[k]);return x<0?null:`${x}번 자리의 컬럼이 "${head[x]}"입니다 (기준 "${BASE_COLS[x]}")`})();
     const mc=CATS.filter(c=>!cats.has(c)), ms=STORES.filter(s=>!stores.has(s));
-    const rows=[['재고 컬럼 72개의 이름과 순서',colBad],['카테고리 6개',mc.length?'빠진 카테고리: '+mc.join(', '):null],['점 10개',ms.length?'빠진 점: '+ms.join(', '):null]];
+    const rows=[['재고 컬럼 72개의 이름과 순서',colBad],['대상 카테고리 3개',mc.length?'빠진 카테고리: '+mc.join(', '):null],['점 10개',ms.length?'빠진 점: '+ms.join(', '):null]];
     const fail=rows.some(r=>r[1]);
     i.files[0]=['재고 스냅샷',f.name,'올린 파일',now().slice(5),fmt(lines.length-1),fail?'bad':'ok'];
     i.state=fail?'실패':'준비됨';
@@ -562,7 +564,7 @@ document.addEventListener('click', async e=>{
 });
 document.addEventListener('change', e=>{
   if(e.target.type==='file'){const n=document.querySelector(`.fname[data-for="${e.target.id}"]`); if(n){n.textContent=e.target.files[0]?e.target.files[0].name:'선택한 파일 없음'; n.classList.toggle('has',!!e.target.files[0])}}
-  if(e.target.id==='role'){S.role=e.target.value;render()}
+  if(e.target.id==='role'){S.role=e.target.value; if(!allowed(S.page)) S.page=(S.role==='all'?'s1':MENU[S.role][0]); render(); toast(e.target.selectedOptions[0].textContent+' 권한으로 접속했습니다')}
   if(e.target.id==='pickRun'){S.viewRun=e.target.value;render()}
   if(e.target.id&&e.target.id.startsWith('p_')){const p=PARAMS.find(x=>'p_'+x[0]===e.target.id); e.target.classList.toggle('changed', Number(e.target.value)!==S.prodParams[p[0]])}
 });
