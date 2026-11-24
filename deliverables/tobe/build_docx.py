@@ -140,9 +140,9 @@ def diagram(d):
             "→\n전용선·VPN",
             "① 수집 (Data Factory)  →  ② 입력 구성 (현행 파일 형식)  →  ③ 저장소 (입력·결과·프로그램)\n\n"
             "④ 실행기 — 검증용 / 운영용\n입력 검증 → pipeline.py → 업무 규칙 확인\n\n"
-            "⑤ 관리 화면 (실행·비교·승인)   ⑥ 기록 DB (버전·파라미터·이력)   ⑦ 로그인·알림 (Entra ID, Logic Apps)",
+            "⑤ 관리 화면 (실행·비교·질문·승인)   ⑥ 기록 DB (버전·파라미터·이력)   ⑦ 로그인·알림 (Entra ID, Logic Apps)",
             "←\n웹 화면",
-            "현업 사용자\nS&OP 담당자\nMD\nIT혁신팀\n\nERP(L-lit): 결과 수동 업로드"]
+            "현업 사용자\n바이어\nS&OP 담당자\nMD\nIT혁신팀\n\nERP(L-lit): 결과 수동 업로드"]
     for i, (h, b) in enumerate(zip(heads, body)):
         write(t.rows[0].cells[i], h, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
         write(t.rows[1].cells[i], b, size=8.5, align=WD_ALIGN_PARAGRAPH.CENTER)
@@ -169,8 +169,8 @@ def build_tobe():
     d.add_heading("2. AS-IS → To-Be", 1)
     note(d, "단계 번호는 전달받은 AS-IS 프로세스(21단계) 기준")
     table(d, ["단계", "업무", "AS-IS", "To-Be", "구분"], T.ASIS, [8, 14, 30, 37, 11],
-          colors={4: {"자동화": (0x0F, 0x5C, 0x5C), "화면": (0x27, 0x4A, 0x7A), "유지": (0x52, 0x52, 0x52)}})
-    note(d, "자동화 8개 업무, 화면 전환 3개 업무, 현행 유지 3개 업무 (공헌이익, 배분 계산, ERP 반영)")
+          colors={4: {"자동화": (0x0F, 0x5C, 0x5C), "화면": (0x27, 0x4A, 0x7A), "유지": (0x52, 0x52, 0x52), "신규": (0x7A, 0x4F, 0x00)}})
+    note(d, "자동화 8개 업무, 화면 전환 3개 업무, 현행 유지 3개 업무 (공헌이익, 배분 계산, ERP 반영), 신규 1개 업무 (이상치 확인)")
 
     d.add_heading("3. To-Be 구성", 1)
     diagram(d)
