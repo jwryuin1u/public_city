@@ -70,11 +70,14 @@ def footer_page_number(d, label):
 def fix_table(t, widths):
     """열 너비를 고정하고 칸 안쪽 여백을 준다 (Word와 다른 편집기에서 같은 모양이 되도록)."""
     tblPr = t._tbl.tblPr
-    lay = OxmlElement("w:tblLayout"); lay.set(qn("w:type"), "fixed"); tblPr.append(lay)
+    lay = tblPr.find(qn("w:tblLayout"))  # autofit = False 가 만든 것. Word는 표 속성 순서(tblLayout → tblCellMar → tblLook)를 지켜야 한다
+    if lay is None:
+        lay = OxmlElement("w:tblLayout"); tblPr.find(qn("w:tblW")).addnext(lay)
+    lay.set(qn("w:type"), "fixed")
     mar = OxmlElement("w:tblCellMar")
     for side, w in (("top", 50), ("left", 90), ("bottom", 50), ("right", 90)):
         el = OxmlElement(f"w:{side}"); el.set(qn("w:w"), str(w)); el.set(qn("w:type"), "dxa"); mar.append(el)
-    tblPr.append(mar)
+    lay.addnext(mar)
     for i, w in enumerate(widths):
         t.columns[i].width = Cm(WIDTH * w / 100)
         for row in t.rows:

@@ -143,7 +143,6 @@ def tbl_setup(t, widths, hair=True, pad=(70, 0, 70, 170)):
     """열 너비 고정, 세로선 없음, 가로 괘선만. 글자가 본문 왼쪽 선에 맞도록 칸 왼쪽 여백은 0."""
     t.alignment = WD_TABLE_ALIGNMENT.LEFT; t.autofit = False
     pr = t._tbl.tblPr
-    look = pr.find(qn("w:tblLook"))
     b = el("w:tblBorders")
     for side in ("top", "left"):
         b.append(border(f"w:{side}"))
@@ -151,15 +150,13 @@ def tbl_setup(t, widths, hair=True, pad=(70, 0, 70, 170)):
     b.append(border("w:right"))
     b.append(border("w:insideH", HAIR if hair else None))
     b.append(border("w:insideV"))
-    lay = el("w:tblLayout", w_type="fixed")
     mar = el("w:tblCellMar")
     for side, w in zip(("top", "left", "bottom", "right"), pad):
         mar.append(el(f"w:{side}", w_w=w, w_type="dxa"))
-    for e in (b, lay, mar):
-        if look is not None:
-            look.addprevious(e)
-        else:
-            pr.append(e)
+    # Word는 표 속성의 순서를 지켜야 연다: tblBorders → tblLayout → tblCellMar → tblLook
+    lay = pr.find(qn("w:tblLayout"))  # autofit = False 가 만든 것
+    lay.addprevious(b)
+    lay.addnext(mar)
     for row in t.rows:
         row._tr.get_or_add_trPr().append(el("w:cantSplit"))
         for i, w in enumerate(widths):
