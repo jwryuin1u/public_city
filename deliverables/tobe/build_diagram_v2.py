@@ -77,7 +77,6 @@ def architecture():
     s.append(arrow("M132,216 V144", u))
     s.append(label(140, 184, "읽기 전용 조회"))
     s.append(arrow("M232,108 H312", u))
-    s.append(label(272, 98, "전용선·VPN", "middle"))
 
     # Azure 1행
     s.append(card(312, 72, 208, 72, [("수집", "t"), ("Azure Data Factory", "sv"), ("기간계 데이터를 원본 그대로 수집", "sub")], num=1))
@@ -281,8 +280,7 @@ def figure(fid, svg, aria, caption, cls=""):
 
 def main():
     parts = [
-        "<h1>선제적 양수도 프로세스 To-Be — 아키텍처 예시와 흐름도</h1>",
-        "<p class=meta>판매 차질 방지 Agent(S&amp;OP팀) PoC · 2026-11-25 · 인포유 · To-Be 개발 방안 v1.0의 3장·4장을 그림으로 정리</p>",
+        "<h1>선제적 양수도 프로세스 To-Be</h1>",
         "<h2>1. 아키텍처 예시</h2>",
         figure("fig-arch", architecture(),
                "기간계 데이터를 Data Factory로 수집해 Data Lake Storage에 두고, Container Apps Job 실행기가 pipeline.py를 실행하며, 사용자는 App Service 관리 화면으로 접속하는 구성",
@@ -303,7 +301,7 @@ def main():
                "이상치가 없으면 4·5를 건너뛰고 6 운영 반영 요청으로 진행. 답변이 '로직 수정'이면 새 버전을 등록해 1부터 다시 진행"),
     ]
     OUT.write_text("<!doctype html><html lang=ko><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-                   "<title>선제적 양수도 To-Be 아키텍처·흐름도</title><style>" + CSS + "</style></head><body><main>"
+                   "<title>선제적 양수도 프로세스 To-Be</title><style>" + CSS + "</style></head><body><main>"
                    + "".join(parts) + "</main></body></html>", encoding="utf-8")
     print(OUT.name)
 
