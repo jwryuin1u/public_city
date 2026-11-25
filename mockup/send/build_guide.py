@@ -20,7 +20,7 @@ INTRO = [
     "목적: 프로그램 등록 → 실행 → 검증 → 승인 → ERP 업로드 파일 수령까지의 흐름을 화면 순서대로 정리",
     "근거: 전달받은 기초정보, PPT, 현행 소스·입력(11/18 기준)",
     "성격: 컨셉 예시 (화면의 수치는 실제 배분 결과가 아닌 예시)",
-    "향후: 소스·데이터 수령 후 실제 로직과 데이터 기준으로 보완 예정",
+    "향후: 프로젝트 착수 후 실제 데이터 기준으로 구현",
 ]
 SCREENS = [
     ("검증 실행", "S1 내 프로그램 버전", "현업 사용자", "수정한 pipeline.py 등록"),
@@ -159,7 +159,7 @@ def build_pdf():
             B.append(f"<figure><p class=step><b>{n + 1}. {e(title)}</b></p><ul>" + "".join(f"<li>{e(x)}</li>" for x in items)
                      + f"</ul><img src='img/{name}'></figure>")
             n += 1
-    B += ["<h2>이상치 질문·답변 운영 기준 (안)</h2>", table(["항목", "기준 (안)"], POLICY), "<ul class=intro><li>PoC 구현 범위에 포함. 기준의 확정은 To-Be 개발 방안의 확인 요청 19~21번 회신 후</li></ul>"]
+    B += ["<h2>이상치 질문·답변 운영 기준 (안)</h2>", table(["항목", "기준 (안)"], POLICY), "<ul class=intro><li>PoC 구현 범위에 포함. 세부 기준은 프로젝트 착수 시 협의 (To-Be 개발 방안 협의 사항 19~21번)</li></ul>"]
     css = """@page{size:A4;margin:16mm 14mm}
 body{font:10.5pt/1.55 "NanumGothic","Malgun Gothic",sans-serif;color:#171717}
 h1{font-size:18pt;margin:0 0 10pt}

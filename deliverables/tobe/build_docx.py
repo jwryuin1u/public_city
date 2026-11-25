@@ -156,11 +156,12 @@ def build_tobe():
     d = new_doc()
     footer_page_number(d, "선제적 양수도 프로세스 To-Be 개발 방안 v1.0")
     d.add_paragraph("선제적 양수도 프로세스 To-Be 개발 방안", style="Title")
-    note(d, "판매 차질 방지 Agent(S&OP팀) PoC · v1.0 · 2026-11-24 · 인포유")
+    note(d, "판매 차질 방지 Agent(S&OP팀) PoC · v1.0 · 2026-11-25 · 인포유")
     table(d, ["항목", "내용"], [
         ("목적", "선제적 양수도(재고배분) 프로세스의 To-Be 개발 방식 확정"),
         ("근거 자료", "기초정보(11/5), 과제 추진 방안 PPT, 현행 소스·입력·결과(11/18 기준), AS-IS 프로세스(S&OP 첨언)"),
-        ("확정 절차", "본 문서의 방식(1~7장)에 대한 의견과 8장 확인 요청 사항 회신 → 반영 후 최종 확정"),
+        ("검토 결론", "PoC 진행 가능. 현행 pipeline.py가 수정 없이 실행되고 재실행 결과가 동일함을 확인"),
+        ("확정 절차", "개발 방식은 본 문서 기준. 세부 항목(8장)은 프로젝트 착수 시 협의하여 확정"),
     ], [18, 82], first_col_label=True)
 
     d.add_heading("1. 개발 방식 요약", 1)
@@ -175,7 +176,7 @@ def build_tobe():
     d.add_heading("3. To-Be 구성", 1)
     diagram(d)
     table(d, ["구성요소", "Azure 서비스 (제안)", "역할"], T.COMPONENTS, [16, 40, 44])
-    note(d, "Azure 서비스는 제안이며 고객 환경과 사내 표준 확인 후 확정 (확인 요청 10번)")
+    note(d, "Azure 서비스는 제안이며 고객 환경과 사내 표준에 맞춰 확정 (협의 사항 10번)")
 
     d.add_heading("4. To-Be 프로세스", 1)
     d.add_heading("실행 모드", 2)
@@ -189,11 +190,9 @@ def build_tobe():
         table(d, ["항목", "방식"], rows, [22, 78], first_col_label=True)
 
     d.add_heading("6. 사전 검증 결과", 1)
-    note(d, "전달받은 현행 소스와 11/18 입력으로 당사 환경(Linux)에서 확인한 내용")
-    table(d, ["확인 항목", "결과", "내용"], T.VERIFIED, [30, 10, 60],
-          colors={1: {"확인": (0x17, 0x79, 0x4A), "미확인": (0xC4, 0x29, 0x1C)}})
-    bullets(d, ["전달받은 재고 파일: 원본 추출 시각 10:45, 11/18 결과에서 수량이 바뀐 423건 중 331건이 이동 후 수량과 일치, EYEWEAR 미포함",
-                "같은 입력으로 PC에서 실행한 결과를 받으면 PC와 신규 환경의 결과 일치 여부를 바로 확인 가능"])
+    note(d, "전달받은 현행 소스와 11/18 입력으로 당사 환경(Linux)에서 실행해 확인한 내용")
+    table(d, ["확인 항목", "결과", "내용"], T.VERIFIED, [27, 14, 59],
+          colors={1: {"확인": (0x17, 0x79, 0x4A), "착수 시 확인": (0x52, 0x52, 0x52)}})
 
     d.add_heading("7. PoC 범위·인수 기준·진행 단계", 1)
     d.add_heading("범위", 2)
@@ -201,14 +200,14 @@ def build_tobe():
     d.add_heading("인수 기준 (안)", 2); numbered(d, T.ACCEPT)
     d.add_heading("진행 단계", 2)
     table(d, ["단계", "구분", "내용", "선행 조건"], T.STEPS, [7, 15, 45, 33])
-    note(d, "기간과 투입 인력은 8장 확인 요청 사항 중 우선순위 '상' 항목 회신 후 산정")
+    note(d, "기간과 투입 인력은 본 방안 기준으로 산정하여 별도 제시. 기간계 접근 방식과 Azure 환경 구성에 따라 변동")
 
     d.add_page_break()
-    d.add_heading("8. 확정을 위한 확인 요청 사항", 1)
-    note(d, "회신은 첨부 엑셀(선제적양수도_확인요청사항.xlsx)의 회신란에 기재. '당사 제안'은 회신이 없을 때 적용하는 기본안")
-    table(d, ["No", "구분", "확인 요청 사항", "당사 제안 (기본안)", "우선"],
+    d.add_heading("8. 프로젝트 착수 시 협의 사항", 1)
+    note(d, "착수 시 협의하여 확정할 항목. 협의 전에는 '당사 기본안'으로 진행 (첨부 엑셀과 같은 내용)")
+    table(d, ["No", "구분", "협의 사항", "당사 기본안", "우선"],
           [(str(i + 1), a, b, c, p) for i, (a, b, c, _d, p) in enumerate(T.ASKS)], [5, 10, 50, 28, 7],
-          colors={4: {"상": (0xC0, 0x00, 0x00)}})
+          colors={})
     out = HERE / "선제적양수도_ToBe_개발방안_v1.0.docx"
     d.save(out)
     return out
@@ -243,7 +242,7 @@ def build_guide():
             n += 1
     d.add_heading("이상치 질문·답변 운영 기준 (안)", 1)
     table(d, ["항목", "기준 (안)"], G.POLICY, [24, 76], first_col_label=True)
-    bullets(d, ["PoC 구현 범위에 포함. 기준의 확정은 To-Be 개발 방안의 확인 요청 19~21번 회신 후"])
+    bullets(d, ["PoC 구현 범위에 포함. 세부 기준은 프로젝트 착수 시 협의 (To-Be 개발 방안 협의 사항 19~21번)"])
     out = SEND / "재고배분_화면흐름_안내.docx"
     d.save(out)
     return out
